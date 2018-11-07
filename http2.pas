@@ -52,7 +52,7 @@ Type
 
  // RFC: 5.1.  Stream States
 
- TStreamStates = (idle, reserved_local, reserved_remote, open, halfclosed_local, halfclosed_remote, closed);
+ TStreamStates = (idle, reserved_local, reserved_remote, open, halfclosed_local, halfclosed_remote, closed, broken);
 
  THTTP2_Stream = Class(TObject)
        ID : Integer;   { <>0, 1.. }
@@ -62,6 +62,8 @@ Type
 
        window_size: Integer;    { 65,535 by default }
        SETTINGS_MAX_FRAME_SIZE : UInt24;  { 16384..16777215 }
+
+       class function StateToString(s:TStreamStates):string;
   end;
 
  { THTTP2_Reader - Thread }
@@ -71,7 +73,7 @@ type
  TNoiseContainerP = ^TNoiseContainer;
 
  TNoiseQ = specialize TPasMPBoundedQueue<RawByteString>;
- TStatusQ = specialize TPasMPBoundedQueue<Integer>;
+ TSSL_ERRORQ = specialize TPasMPBoundedQueue<Integer>;
 
 
  THTTP2_Reader = class(TThread)
@@ -85,7 +87,7 @@ type
  private
 
    FNoise : TThreadMethod;
-   FStatus : TThreadMethod;
+   FSSL_ERROR : TThreadMethod;
    FSSL: PSSL;
    ErrorCount: Integer;
 
@@ -94,13 +96,13 @@ type
  public
 
    NOISE : TNoiseQ;
-   STATUS : TStatusQ;
+   SSL_ERROR : TSSL_ERRORQ;
 
    constructor Create(SSL : PSSL);
 
 
    property OnNoise : TThreadMethod read FNoise write FNoise;
-   property OnStatus : TThreadMethod read FStatus write FStatus;
+   property OnSSL_ERROR : TThreadMethod read FSSL_ERROR write FSSL_ERROR;
  end;
 
  { THTTP2_Connection }
@@ -173,7 +175,7 @@ type
 
        // read Events
        procedure Noise;
-       procedure Status;
+       procedure Error;
 
        // Error Informations
        procedure loadERROR(Err : cint);
@@ -422,17 +424,6 @@ const
       'MAX_FRAME_SIZE',
       'MAX_HEADER_LIST_SIZE');
 
-type
-   THTTP2_Stream_Status = (
-     STREAM_STATUS_IDLE,
-     STREAM_STATUS_RESERVED_LOCAL,
-     STREAM_STATUS_RESERVED_REMOTE,
-     STREAM_STATUS_OPEN,
-     STREAM_STATUS_HALF_CLOSED_LOCAL,
-     STREAM_STATUS_HALF_CLOSED_REMOTE,
-     STREAM_STATUS_CLOSED,
-     STREAM_STATUS_BROKEN);
-
 // Tools
 
 function FlagName(FLAG:byte):string;
@@ -445,6 +436,23 @@ begin
  else
   result := IntToHex(FLAG,2);
  end;
+end;
+
+{ THTTP2_Stream }
+
+class function THTTP2_Stream.StateToString(s: TStreamStates): string;
+const
+  STATE_NAMES: array[idle.. broken] of string = (
+    'IDLE',
+    'RESERVED_LOCAL',
+    'RESERVED_REMOTE',
+    'OPEN',
+    'CLOSED_LOCAL',
+    'CLOSED_REMOTE',
+    'CLOSED',
+    'BROKEN');
+begin
+ result := STATE_NAMES[s];
 end;
 
 // RFC: 3.5.  HTTP/2 Connection Preface
@@ -718,8 +726,10 @@ begin
 
        with PHTTP2_FRAME_HEADER(@ClientNoise[CN_pos])^ do
        begin
-         if Typ<=FRAME_LAST then
-          mDebug.add('FRAME_'+FRAME_NAME[Typ]+', Flags=['+IntToHex(Flags,2)+']');
+         if (Typ<=FRAME_LAST) then
+          mDebug.add('FRAME_'+FRAME_NAME[Typ]+', Flags=['+IntToHex(Flags,2)+'] received')
+         else
+          mDebug.add('FRAME_'+IntToStr(Typ)+' received');
 
          inc(CN_Pos,SizeOf_FRAME);
          CN_Pos2 := CN_pos;
@@ -809,7 +819,7 @@ begin
               mdebug.add(
                {} ' Stream '+
                {} INtTOstr(cardinal(Stream_ID)) + '.' +
-               {} inttostr(cardinal(Stream_Dependency))+' has '+
+               {} inttostr(cardinal(Stream_Dependency))+' Weight='+
                {} IntToStr(Weight));
             end;
 
@@ -945,7 +955,9 @@ begin
                break;
              end;
 
-             mDebug.add(' Stream ' + IntToStr(cardinal(Stream_ID)) + ' has Window_Size_Increment ' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
+             mDebug.add(
+              {} ' Stream ' + IntToStr(cardinal(Stream_ID)) +
+              {} ' Window_Size_Increment=' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
 
             end;
           FRAME_TYPE_CONTINUATION : begin
@@ -993,12 +1005,13 @@ var
  D : RawByteString;
  ERROR: integer;
 begin
-   if assigned(FStatus) then
+   if assigned(FSSL_ERROR) then
    begin
      // Just informa about the start of the task
-     STATUS.enqueue(SSL_ERROR_NONE);
-     Synchronize(FStatus);
+     SSL_ERROR.enqueue(SSL_ERROR_NONE);
+     Synchronize(FSSL_ERROR);
    end;
+
    while not Terminated do
    begin
 
@@ -1009,9 +1022,9 @@ begin
       inc(ErrorCount);
 
       ERROR := SSL_get_error(FSSL,BytesRead);
-      if not(STATUS.IsFull) then
-       STATUS.enqueue(ERROR);
-      sDebug.add(SSL_ERROR[ERROR]);
+      if not(SSL_ERROR.IsFull) then
+       SSL_ERROR.enqueue(ERROR);
+      sDebug.add(SSL_ERROR_NAME[ERROR]);
 
       if (ERROR=SSL_ERROR_SYSCALL) then
       begin
@@ -1021,10 +1034,10 @@ begin
       end;
       ERR_print_errors_cb(@cb_ERROR,nil);
 
-      if assigned(FStatus) then
+      if assigned(FSSL_ERROR) then
       begin
         // we have errors
-        Synchronize(FStatus);
+        Synchronize(FSSL_ERROR);
       end;
 
       Terminate;
@@ -1059,7 +1072,7 @@ begin
  inherited Create(True);
  FSSL := SSL;
  FreeOnTerminate := True;
- STATUS := TStatusQ.Create(1024);
+ SSL_ERROR := TSSL_ERRORQ.Create(1024);
  NOISE :=  TNoiseQ.Create(1024);
 end;
 
@@ -1212,11 +1225,12 @@ tcp_nodelay = 1;
  // SSL_CTX_set_read_ahead
 
  // not necessary, user defaults
- if (SSL_CTX_set_cipher_list(CTX, 'TLS_AES_256_GCM_SHA384')<>1) then
-  raise Exception.Create('set Cipher List fails');
+
+ //if (SSL_CTX_set_cipher_list(CTX, 'TLS_AES_256_GCM_SHA384')<>1) then
+//  raise Exception.Create('set Cipher List fails');
 
 
- SSL_CTX_set_options(CTX, SSL_OP_CIPHER_SERVER_PREFERENCE);
+// SSL_CTX_set_options(CTX, SSL_OP_CIPHER_SERVER_PREFERENCE);
 
  // Register a Callback for: "SNI" read Identity Client expects
  SSL_CTX_callback_ctrl(CTX,SSL_CTRL_SET_TLSEXT_SERVERNAME_CB,@cb_SERVERNAME);
@@ -1237,7 +1251,7 @@ var
 P : PChar;
 x : AnsiString;
 ERR_F : THandle;
-ERROR: Integer;
+//ERROR: Integer;
 
 // initial Read
 buf : array[0..pred(16*1024)] of byte;
@@ -1278,7 +1292,7 @@ begin
   a := SSL_accept(SSL);
   if (a<>1) then
   begin
-    sDebug.add(SSL_ERROR[SSL_get_error(SSL,a)]);
+    sDebug.add(SSL_ERROR_NAME[SSL_get_error(SSL,a)]);
     ERR_print_errors_cb(@cb_ERROR,nil);
     raise Exception.create('SSL_accept() fails');
   end else
@@ -1298,20 +1312,18 @@ begin
    sDebug.addstrings(SecurityPromise);
 
    // Check Security
-   CheckSecurityItem('Cipher','ECDHE-RSA-AES128-GCM-SHA256');
+   CheckSecurityItem('Cipher','ECDHE-RSA-AES128-GCM-SHA256|ECDHE-RSA-AES256-GCM-SHA384');
    CheckSecurityItem('Version','TLSv1.2');
    CheckSecurityItem('Kx','ECDH');
    CheckSecurityItem('Au','RSA');
-   CheckSecurityItem('Enc','AESGCM(128)');
+   CheckSecurityItem('Enc','AESGCM(128)|AESGCM(256)');
    CheckSecurityItem('Mac','AEAD');
-
 
    // Start the Read Connection Data Thread
    Reader := THTTP2_Reader.Create(SSL);
    Reader.OnNoise:=@Noise;
-   Reader.OnStatus:=@Status;
+   Reader.OnSSL_ERROR:=@Error;
    Reader.Start;
-
 
    (*
    sDebug.add('read ...');
@@ -1445,18 +1457,18 @@ begin
  end;
 end;
 
-procedure THTTP2_Connection.Status;
+procedure THTTP2_Connection.Error;
 var
    I : Integer;
 begin
-  if Reader.STATUS.dequeue(I) then
-   mDebug.add('We have a Update of Status Code! New Value is '+IntToStr(I));
+  if Reader.SSL_ERROR.dequeue(I) then
+   mDebug.add('We have a Update of SSL_ERROR Code! New Value is '+SSL_ERROR_NAME[I]);
 end;
 
 
 procedure THTTP2_Connection.loadERROR(Err: cint);
 begin
- sDebug.add(SSL_ERROR[SSL_get_error(SSL,Err)]);
+ sDebug.add(SSL_ERROR_NAME[SSL_get_error(SSL,Err)]);
 
  ERR_print_errors_cb(@cb_ERROR,nil);
 end;

@@ -95,7 +95,7 @@ const
   SSL_ERROR_WANT_CONNECT = 7;
 
   // ERRORS
-  SSL_ERROR : array[0..7] of string = (
+  SSL_ERROR_NAME : array[0..7] of string = (
  'SSL_ERROR_NONE',
  'SSL_ERROR_SSL',
  'SSL_ERROR_WANT_READ',

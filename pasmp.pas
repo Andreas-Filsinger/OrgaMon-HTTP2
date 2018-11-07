@@ -1,13 +1,12 @@
-
 (******************************************************************************
  *                                   PasMP                                    *
  ******************************************************************************
- *                        Version 2017-10-18-02-02-0000                       *
+ *                        Version 2018-03-23-10-18-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2017, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2018, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -2236,6 +2235,7 @@ type TPasMPAvailableCPUCores=array of TPasMPInt32;
        class function DecodeJobTagFromJobFlags(const Flags:TPasMPUInt32):TPasMPUInt32; {$ifdef HAS_STATIC}static;{$endif}{$ifdef CAN_INLINE}inline;{$endif}
        procedure Reset;
        function CreateScope:TPasMPScope; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+       function GetJobWorkerThreadIndex:TPasMPInt32;
 {$ifdef HAS_ANONYMOUS_METHODS}
        function Acquire(const JobReferenceProcedure:TPasMPJobReferenceProcedure;const Data:pointer=nil;const ParentJob:PPasMPJob=nil;const Flags:TPasMPUInt32=0):PPasMPJob; overload;
 {$endif}
@@ -6477,7 +6477,7 @@ end;
 function TPasMPInvertedSemaphore.Acquire(const AcquireCount:TPasMPInt32;out Count:TPasMPInt32):TPasMPInt32;
 begin
  fConditionVariableLock.Acquire;
- try
+ try                          
   if AcquireCount<=0 then begin
    result:=0;
   end else if (fCurrentCount+AcquireCount)<fMaximumCount then begin
@@ -12174,6 +12174,17 @@ begin
 end;
 {$endif}
 
+function TPasMP.GetJobWorkerThreadIndex:TPasMPInt32;
+var CurrentJobWorkerThread:TPasMPJobWorkerThread;
+begin
+ CurrentJobWorkerThread:=GetJobWorkerThread;
+ if assigned(CurrentJobWorkerThread) then begin
+  result:=CurrentJobWorkerThread.fThreadIndex;
+ end else begin
+  result:=-1;
+ end;
+end;
+
 procedure TPasMP.WaitForWakeUp;
 {$ifdef PasMPUseWakeUpConditionVariable}
 var SavedWakeUpCounter:TPasMPInt32;
@@ -13029,6 +13040,7 @@ begin
   JobData^.Granularity:=Granularity;
  end;
  JobData^.Depth:=Depth;
+ JobData^.CanSpread:=CanSpread;
 end;
 
 type PPasMPParallelDirectIntroSortJobData=^TPasMPParallelDirectIntroSortJobData;
@@ -13907,4 +13919,3 @@ finalization
  end;
  GlobalPasMPCriticalSection.Free;
 end.
-
