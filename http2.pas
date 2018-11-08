@@ -69,6 +69,15 @@ Type
  { THTTP2_Reader - Thread }
 
 type
+  TSETTINGS = Record
+    HEADER_TABLE_SIZE : Cardinal;
+    ENABLE_PUSH : Cardinal;
+    MAX_CONCURRENT_STREAMS : Cardinal;
+    INITIAL_WINDOW_SIZE : Cardinal;
+    MAX_FRAME_SIZE : Cardinal;
+    MAX_HEADER_LIST_SIZE : Cardinal;
+  end;
+
  TNoiseContainer = array[0..pred(16*1024)] of byte;
  TNoiseContainerP = ^TNoiseContainer;
 
@@ -133,6 +142,8 @@ type
      // Data-Objects
      Headers: THPACK;
      Streams: TList;
+     SETTINGS : TSETTINGS;
+     SETTINGS_REMOTE : TSETTINGS;
 
      // openSSL
      CTX: PSSL_CTX;
@@ -442,7 +453,7 @@ end;
 
 class function THTTP2_Stream.StateToString(s: TStreamStates): string;
 const
-  STATE_NAMES: array[idle.. broken] of string = (
+  STATE_NAMES: array[idle..broken] of string = (
     'IDLE',
     'RESERVED_LOCAL',
     'RESERVED_REMOTE',
@@ -843,6 +854,10 @@ begin
             end;
           FRAME_TYPE_SETTINGS : begin
 
+              // has Flags:
+              if (Flags and FLAG_ACK=FLAG_ACK) then
+                mDebug.add(' ' + FlagName(FLAG_ACK));
+
               for n := 1 to (cardinal(Len) DIV SizeOf_SETTINGS) do
               begin
                 with PFRAME_SETTINGS(@ClientNoise[CN_Pos2])^ do
@@ -882,9 +897,9 @@ begin
                // if Initialized then
               //write(SETTINGS_ACK);
               // else
-              H := StartFrames;
+              //H := StartFrames;
               // write(H);
-              debug(H);
+              //debug(H);
             end;
           FRAME_TYPE_PUSH_PROMISE : begin
             end;

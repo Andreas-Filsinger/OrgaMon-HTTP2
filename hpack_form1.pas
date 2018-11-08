@@ -88,6 +88,8 @@ type
     HTTP2 : THTTP2_Connection;
 
     //
+    procedure EnsureHTTP2;
+
   public
     { public declarations }
     procedure InitPathToTest;
@@ -411,16 +413,22 @@ begin
   ShowDebugMessages;
 end;
 
-procedure TForm1.Button5Click(Sender: TObject);
+procedure TForm1.EnsureHTTP2;
 begin
   if not(assigned(HTTP2)) then
   begin
    HTTP2 := THTTP2_Connection.create;
    HTTP2.OnRequest := @Request;
-   SHowDebugmessages;
+   ShowDebugmessages;
    HTTP2.CTX:=   HTTP2.StrictHTTP2Context;
-   SHowDebugmessages;
+   ShowDebugmessages;
   end;
+
+end;
+
+procedure TForm1.Button5Click(Sender: TObject);
+begin
+  EnsureHTTP2;
 end;
 
 procedure TForm1.Button6Click(Sender: TObject);
@@ -450,6 +458,7 @@ var
  end;
 
 begin
+ EnsureHTTP2;
  with memo3.lines do
  begin
   D := '';
@@ -459,6 +468,7 @@ begin
  mDebug.add(D);
  HTTP2.AutomataState := 1;
  HTTP2.enqueue(THPACK.HexStrToRawByteString(D));
+ ShowDebugMessages;
 end;
 
 

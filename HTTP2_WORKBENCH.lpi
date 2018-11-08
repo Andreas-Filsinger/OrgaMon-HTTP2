@@ -13,7 +13,6 @@
       <XPManifest>
         <DpiAware Value="True"/>
       </XPManifest>
-      <Icon Value="0"/>
     </General>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
@@ -47,6 +46,7 @@
       <Unit3>
         <Filename Value="hpack.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="HPACK"/>
       </Unit3>
       <Unit4>
         <Filename Value="hpack_form1.pas"/>
