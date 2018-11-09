@@ -66,17 +66,18 @@ Type
        class function StateToString(s:TStreamStates):string;
   end;
 
+
+ THTTP2_Settings = Class(TObject)
+   HEADER_TABLE_SIZE : Integer;
+   ENABLE_PUSH : Integer;
+   MAX_CONCURRENT_STREAMS : Integer;
+   INITIAL_WINDOW_SIZE : Integer;
+   MAX_FRAME_SIZE : Integer;
+   MAX_HEADER_LIST_SIZE : Integer;
+ end;
+
  { THTTP2_Reader - Thread }
 
-type
-  TSETTINGS = Record
-    HEADER_TABLE_SIZE : Cardinal;
-    ENABLE_PUSH : Cardinal;
-    MAX_CONCURRENT_STREAMS : Cardinal;
-    INITIAL_WINDOW_SIZE : Cardinal;
-    MAX_FRAME_SIZE : Cardinal;
-    MAX_HEADER_LIST_SIZE : Cardinal;
-  end;
 
  TNoiseContainer = array[0..pred(16*1024)] of byte;
  TNoiseContainerP = ^TNoiseContainer;
@@ -142,8 +143,8 @@ type
      // Data-Objects
      Headers: THPACK;
      Streams: TList;
-     SETTINGS : TSETTINGS;
-     SETTINGS_REMOTE : TSETTINGS;
+     SETTINGS : THTTP2_Settings;
+     SETTINGS_REMOTE : THTTP2_Settings;
 
      // openSSL
      CTX: PSSL_CTX;
@@ -437,16 +438,37 @@ const
 
 // Tools
 
-function FlagName(FLAG:byte):string;
+function FlagName(SingleFlag:byte):string;
 begin
- case FLAG of
+ case SingleFlag of
    FLAG_ACK : result := 'ACK|END_STREAM';
    FLAG_END_HEADERS : result := 'END_HEADERS';
    FLAG_PADDED : result := 'PADDED';
    FLAG_PRIORITY : result := 'PRIORITY';
  else
-  result := IntToHex(FLAG,2);
+  result := IntToHex(SingleFlag,2);
  end;
+end;
+
+function FlagsAsString(Flags:byte):string;
+
+ procedure CheckFlag(Flag:byte);
+ begin
+   if Flags and Flag<>0 then
+     result := result + '|' + FlagName(Flag);
+ end;
+
+begin
+ result := '';
+ if (Flags=0) then
+  exit;
+
+ CheckFlag(FLAG_ACK);
+ CheckFlag(FLAG_END_HEADERS);
+ CheckFlag(FLAG_PADDED);
+ CheckFlag(FLAG_PRIORITY);
+
+ delete(result,1,1);
 end;
 
 { THTTP2_Stream }
@@ -696,8 +718,8 @@ procedure THTTP2_Connection.Parse;
 var
   CN_Pos2: Integer;
   n,m : Integer;
-  HeaderContentSize: INteger;
-  H : RawByteString;
+  ContentSize: Integer;
+  H, D : RawByteString;
 begin
  ParserSave;
  repeat
@@ -722,7 +744,7 @@ begin
              end;
             inc(CN_pos,SizeOf_CLIENT_PREFIX);
             inc(AutomataState);
-            mDebug.add('CLIENT_PREFIX received');
+            mDebug.add('CLIENT_PREFIX');
          end;
 
       end;
@@ -737,43 +759,53 @@ begin
 
        with PHTTP2_FRAME_HEADER(@ClientNoise[CN_pos])^ do
        begin
-         if (Typ<=FRAME_LAST) then
-          mDebug.add('FRAME_'+FRAME_NAME[Typ]+', Flags=['+IntToHex(Flags,2)+'] received')
-         else
-          mDebug.add('FRAME_'+IntToStr(Typ)+' received');
+
+          // Typ
+          if (Typ<=FRAME_LAST) then
+           mDebug.add('FRAME_'+FRAME_NAME[Typ])
+          else
+           mDebug.add('FRAME_'+IntToStr(Typ));
+
+          // Flags?
+          if (Flags<>0) then
+           mDebug.add(' Flags ['+FlagsAsString(Flags)+']');
 
          inc(CN_Pos,SizeOf_FRAME);
          CN_Pos2 := CN_pos;
 
          case Typ of
           FRAME_TYPE_DATA : begin
+
+            ContentSize := Cardinal(Len);
+
+            mDebug.add(' DATA_SIZE '+IntToStr(ContentSize));
+
+            D := '';
+            for n := 0 to pred(ContentSize) do
+              D := D + chr(ClientNoise[CN_Pos2+n]);
+            mDebug.add(' DATA '+ D);
+
             end;
           FRAME_TYPE_HEADERS : begin
 
             mDebug.add(' Stream '+IntToStr(Cardinal(Stream_ID)));
-            HeaderContentSize := Cardinal(Len);
+            ContentSize := Cardinal(Len);
 
-            // has Flags:
-            if (Flags and FLAG_END_STREAM=FLAG_END_STREAM) then
-              mDebug.add(' ' + FlagName(FLAG_END_STREAM));
 
-            if (Flags and FLAG_END_HEADERS=FLAG_END_HEADERS) then
-              mDebug.add(' ' + FlagName(FLAG_END_HEADERS));
 
             if (Flags and FLAG_PADDED=FLAG_PADDED) then
             begin
                with PFRAME_HEADERS_PADDING(@ClientNoise[CN_Pos2])^ do
                begin
-                mDebug.add(' ' + FlagName(FLAG_PADDED)+' ' +IntTOStr(Pad_Length));
-                dec(HeaderContentSize,Pad_Length);
+                mDebug.add(' Pad Length ' + IntTOStr(Pad_Length));
+                dec(ContentSize,Pad_Length);
                end;
                inc(CN_Pos2,sizeof(TFRAME_HEADERS_PADDING));
-               dec(HeaderContentSize,sizeof(TFRAME_HEADERS_PADDING));
+               dec(ContentSize,sizeof(TFRAME_HEADERS_PADDING));
             end;
 
             if (Flags and FLAG_PRIORITY=FLAG_PRIORITY) then
             begin
-              mDebug.add(' ' + FlagName(FLAG_PRIORITY));
               with PFRAME_HEADERS_PRIORITY(@ClientNoise[CN_Pos2])^ do
               begin
                 mDebug.add('  Stream Dependency ' + IntTostr(Cardinal(Stream_Dependency)) );
@@ -785,20 +817,25 @@ begin
 
               end;
               inc(CN_Pos2,sizeof(TFRAME_HEADERS_PRIORITY));
-              dec(HeaderContentSize,sizeof(TFRAME_HEADERS_PRIORITY));
+              dec(ContentSize,sizeof(TFRAME_HEADERS_PRIORITY));
             end;
 
-            mDebug.add(' HEADER_SIZE '+IntToStr(HeaderContentSize));
+            mDebug.add(' HEADER_SIZE '+IntToStr(ContentSize));
 
             // create the ASCII-HEX Representation of the HEADER
             H := '';
-            for n := 0 to pred(HeaderContentSize) do
+            for n := 0 to pred(ContentSize) do
               H := H + IntToHex(ClientNoise[CN_Pos2+n],2);
             mDebug.add(' HEADER '+ H);
 
             //
-            if assigned(Headers) then
+            {
+            if not(assigned(Headers)) then
             begin
+                   Headers := THPACK.Create;
+                     Headers.MAXIMUM_TABLE_SIZE:= 65536;
+            end;
+
               setLength(H,HeaderContentSize);
               move(ClientNoise[CN_Pos2],H[1],HeaderContentSize);
               with Headers do
@@ -807,13 +844,7 @@ begin
                Decode;
               end;
               mDebug.addStrings(Headers);
-            end else
-            begin
-              mDebug.add('ERROR: get HEADER Data, but no Headers-Object initialised');
-              FatalError := true;
-              break;
-            end;
-
+             }
 
             end;
           FRAME_TYPE_PRIORITY : begin;
@@ -853,10 +884,6 @@ begin
 
             end;
           FRAME_TYPE_SETTINGS : begin
-
-              // has Flags:
-              if (Flags and FLAG_ACK=FLAG_ACK) then
-                mDebug.add(' ' + FlagName(FLAG_ACK));
 
               for n := 1 to (cardinal(Len) DIV SizeOf_SETTINGS) do
               begin

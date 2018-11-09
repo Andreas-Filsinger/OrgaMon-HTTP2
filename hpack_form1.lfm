@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 80
+  Left = 740
   Height = 733
-  Top = 319
+  Top = 397
   Width = 1314
   Caption = 'Form1'
   ClientHeight = 733
@@ -161,7 +161,7 @@ object Form1: TForm1
         Left = 1058
         Height = 15
         Top = 484
-        Width = 100
+        Width = 99
         Caption = '<Path to Testfiles>'
         ParentColor = False
       end
