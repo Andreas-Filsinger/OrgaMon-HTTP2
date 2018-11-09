@@ -441,7 +441,7 @@ begin
   // RFC 4.4.  Entry Eviction When Adding New Entries
   NEW_SIZE_INCREMENT := TokenSize(NameValuePair);
 
-  while (TABLE_SIZE+NEW_SIZE_INCREMENT>MAXIMUM_TABLE_SIZE) do
+  while (TABLE_SIZE>0) and (TABLE_SIZE+NEW_SIZE_INCREMENT>MAXIMUM_TABLE_SIZE) do
    delTABLE;
 
   if (NEW_SIZE_INCREMENT<=MAXIMUM_TABLE_SIZE) then

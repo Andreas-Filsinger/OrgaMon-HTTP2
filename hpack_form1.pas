@@ -126,13 +126,10 @@ begin
    HPACK := THPACK.Create;
   with HPACK do
   begin
-
     H := '';
     with memo4.lines do
      for n := 0 to pred(count) do
       H := H + StrFilter(Strings[n],'0123456789ABCDEFabcdef');
-
-
     Wire := THPACK.HexStrToRawByteString(H);
     try
       clear;
