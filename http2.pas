@@ -889,7 +889,7 @@ begin
               begin
                 with PFRAME_SETTINGS(@ClientNoise[CN_Pos2])^ do
                 begin
-                  mDebug.add(' '+SETTINGS_NAMES[cardinal(SETTING_ID)]+'='+IntToStr(Cardinal(Value)));
+                  mDebug.add(' '+SETTINGS_NAMES[cardinal(SETTING_ID)]+' '+IntToStr(Cardinal(Value)));
 
                   case cardinal(SETTING_ID) of
                      SETTINGS_TYPE_HEADER_TABLE_SIZE:begin
@@ -951,8 +951,6 @@ begin
              // ok, We have to answer!
             end;
 
-
-
           end;
           FRAME_TYPE_GOAWAY : begin
 
@@ -997,9 +995,8 @@ begin
                break;
              end;
 
-             mDebug.add(
-              {} ' Stream ' + IntToStr(cardinal(Stream_ID)) +
-              {} ' Window_Size_Increment=' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
+             mDebug.add(' Stream ' + IntToStr(cardinal(Stream_ID)) );
+             mDebug.add(' Window_Size_Increment ' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
 
             end;
           FRAME_TYPE_CONTINUATION : begin

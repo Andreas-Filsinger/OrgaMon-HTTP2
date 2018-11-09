@@ -34,7 +34,6 @@ type
     Button7: TButton;
     Button8: TButton;
     Button9: TButton;
-    Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
     Edit4: TEdit;
@@ -43,11 +42,13 @@ type
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
+    Label5: TLabel;
     Label6: TLabel;
     Label7: TLabel;
     Memo1: TMemo;
     Memo2: TMemo;
     Memo3: TMemo;
+    Memo4: TMemo;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
@@ -117,12 +118,22 @@ uses
 { TForm1 }
 
 procedure TForm1.Button1Click(Sender: TObject);
+var
+  H : RawByteString;
+  n : integer;
 begin
   if not(assigned(HPACK)) then
    HPACK := THPACK.Create;
   with HPACK do
   begin
-    Wire := THPACK.HexStrToRawByteString(edit1.Text);
+
+    H := '';
+    with memo4.lines do
+     for n := 0 to pred(count) do
+      H := H + StrFilter(Strings[n],'0123456789ABCDEFabcdef');
+
+
+    Wire := THPACK.HexStrToRawByteString(H);
     try
       clear;
       Decode;
@@ -201,7 +212,7 @@ procedure TForm1.Button15Click(Sender: TObject);
 begin
   if assigned(HPACK) then
     FreeAndNil(HPACK);
-  edit1.Text := '';
+  memo4.lines.clear;
   memo1.lines.clear;
 end;
 
@@ -349,7 +360,8 @@ begin
           begin
             jTEST := jCASE.items[o];
             W := jTEST.getPath('wire').AsString;
-            edit1.Text := W;
+            memo4.lines.clear;
+            memo4.lines.add(W);
 
 
             jHEADER := jTEST.getPath('headers');
@@ -459,15 +471,15 @@ var
 
 begin
  EnsureHTTP2;
+
+ D := '';
  with memo3.lines do
- begin
-  D := '';
   for n := 0 to pred(count) do
    D := D + StrFilter(Strings[n],'0123456789ABCDEFabcdef');
- end;
- mDebug.add(D);
+
  HTTP2.AutomataState := 1;
  HTTP2.enqueue(THPACK.HexStrToRawByteString(D));
+
  ShowDebugMessages;
 end;
 

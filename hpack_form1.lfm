@@ -13,9 +13,9 @@ object Form1: TForm1
     Height = 733
     Top = 0
     Width = 1314
-    ActivePage = TabSheet2
+    ActivePage = TabSheet1
     Align = alClient
-    TabIndex = 0
+    TabIndex = 1
     TabOrder = 0
     object TabSheet2: TTabSheet
       Caption = 'FRAME-DATA (HTTP/2) bench'
@@ -187,8 +187,8 @@ object Form1: TForm1
         Left = 16
         Height = 15
         Top = 21
-        Width = 24
-        Caption = 'Wire'
+        Width = 154
+        Caption = 'raw FRAME Data (Hex Dump)'
         ParentColor = False
       end
       object Memo3: TMemo
@@ -208,12 +208,12 @@ object Form1: TForm1
         Height = 25
         Top = 11
         Width = 75
-        Caption = 'Parse'
+        Caption = 'decode'
         OnClick = Button8Click
         TabOrder = 15
       end
       object Button18: TButton
-        Left = 48
+        Left = 992
         Height = 25
         Top = 11
         Width = 40
@@ -222,7 +222,7 @@ object Form1: TForm1
         TabOrder = 16
       end
       object Button19: TButton
-        Left = 60
+        Left = 957
         Height = 25
         Top = 273
         Width = 75
@@ -230,21 +230,30 @@ object Form1: TForm1
         OnClick = Button19Click
         TabOrder = 17
       end
+      object Label5: TLabel
+        Left = 16
+        Height = 15
+        Top = 280
+        Width = 87
+        Caption = 'HTTP/2 FRAME_'
+        ParentColor = False
+      end
     end
     object TabSheet1: TTabSheet
       Caption = 'HEADER-DATA (HPACK) bench'
-      ClientHeight = 719
+      ClientHeight = 705
       ClientWidth = 1306
       OnContextPopup = TabSheet1ContextPopup
       object Memo1: TMemo
         Left = 16
-        Height = 304
-        Top = 99
+        Height = 261
+        Top = 168
         Width = 1284
         Anchors = [akTop, akLeft, akRight, akBottom]
         Lines.Strings = (
           '4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d'
           '82860188f439ce75c875fa5784'
+          '20887689AA6355E580AE16D76F6196C361BE9403EA693F750400BCA01FB8D3D700DA98B46F5F92497CA589D34D1F6A1271D882A60E1BF0ACF7'
           '---- Soll:'
           ':method=GET'
           ':scheme=http'
@@ -255,37 +264,18 @@ object Form1: TForm1
         ScrollBars = ssVertical
         TabOrder = 0
       end
-      object Edit1: TEdit
-        Left = 16
-        Height = 23
-        Top = 32
-        Width = 1284
-        Anchors = [akTop, akLeft, akRight]
-        TabOrder = 1
-        Text = '82860188f439ce75c875fa5784'
-      end
-      object Button1: TButton
-        Left = 16
-        Height = 25
-        Top = 421
-        Width = 75
-        Anchors = [akLeft, akBottom]
-        Caption = 'decode'
-        OnClick = Button1Click
-        TabOrder = 2
-      end
       object Label1: TLabel
         Left = 16
         Height = 15
         Top = 8
-        Width = 128
-        Caption = 'wire (compressed Code)'
+        Width = 159
+        Caption = 'raw HEADER data (Hex Dump)'
         ParentColor = False
       end
       object Label2: TLabel
         Left = 16
         Height = 15
-        Top = 72
+        Top = 144
         Width = 90
         Caption = 'Header (HTTP/2)'
         ParentColor = False
@@ -293,21 +283,21 @@ object Form1: TForm1
       object Edit2: TEdit
         Left = 16
         Height = 23
-        Top = 460
+        Top = 446
         Width = 1066
         Anchors = [akLeft, akRight, akBottom]
-        TabOrder = 3
+        TabOrder = 1
         Text = 'C:\Users\Andreas Filsinger\Documents\RAD Studio\Projekte\http2-tests\hpack-test-case\'
       end
       object Button2: TButton
         Left = 16
         Height = 25
-        Top = 494
+        Top = 480
         Width = 220
         Anchors = [akLeft, akBottom]
         Caption = 'Run all "decode" Tests ...'
         OnClick = Button2Click
-        TabOrder = 4
+        TabOrder = 2
       end
       object Button14: TButton
         Left = 94
@@ -316,7 +306,7 @@ object Form1: TForm1
         Width = 107
         Caption = 'dump TABLE'
         OnClick = Button14Click
-        TabOrder = 5
+        TabOrder = 3
       end
       object Button15: TButton
         Left = 205
@@ -325,14 +315,14 @@ object Form1: TForm1
         Width = 107
         Caption = 'new Game'
         OnClick = Button15Click
-        TabOrder = 6
+        TabOrder = 4
       end
       object Edit5: TEdit
         Left = 16
         Height = 23
         Top = 678
         Width = 888
-        TabOrder = 7
+        TabOrder = 5
         Text = 'C:\Users\Andreas\Documents\Embarcadero\Studio\Projekte\OrgaMon\HTTP2\huffman\RFC_7541_Appendix_B.huff'
       end
       object Button16: TButton
@@ -342,6 +332,27 @@ object Form1: TForm1
         Width = 197
         Caption = 'generate Pascal Table'
         OnClick = Button16Click
+        TabOrder = 6
+      end
+      object Memo4: TMemo
+        Left = 16
+        Height = 104
+        Top = 32
+        Width = 1280
+        Lines.Strings = (
+          '20887689AA6355E580AE16D76F6196C361BE9403EA693F750400BCA01FB8D3D700DA98B46F5F92497CA589D34D1F6A1271D882A60E1BF0ACF7'
+        )
+        ScrollBars = ssVertical
+        TabOrder = 7
+      end
+      object Button1: TButton
+        Left = 216
+        Height = 25
+        Top = 0
+        Width = 75
+        Anchors = [akLeft, akBottom]
+        Caption = 'decode'
+        OnClick = Button1Click
         TabOrder = 8
       end
     end
