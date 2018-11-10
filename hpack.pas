@@ -45,7 +45,9 @@ type
     // a dynamic "Key=Value" Table with a static beginning of 61 Pairs
     // Index[0] is never used
     iTABLE : TStringList;
-    nTABLE : TStringList; // same as iTABLE but no value-Part
+    nTABLE : TStringList; // clone of iTABLE but no value-Part
+
+    mDebug : TStringList; // Internal Infos
 
     // a number of octets, representing the HPACK-encoded data of a HEADERS FRAME
     iWIRE : RawByteString;
@@ -85,29 +87,42 @@ type
     // if the add-process would xceed the MAX_TABLE_SIZE
     procedure incTABLE(NameValuePair:string);
 
-    // delete a NameValuePair from the TABLE
+    // delete one NameValuePair from the end of the TABLE
+    // decrease TABLE_SIZE
     procedure delTABLE;
 
-
-    procedure shrinkTABLE;
+    procedure eviction;
 
    public
-     MAXIMUM_TABLE_SIZE : int64;
-     TABLE_SIZE : int64;
 
-     constructor Create;
+    // the actual Size of the TABLE as defined in
+    // RFC "4.1.  Calculating Table Size"
+    TABLE_SIZE : int64;
+
+    // the overall maximum allowed size of the dynamic Part of the TABLE
+    // this is never change in the Livetime of a TABLE
+    MAXIMUM_TABLE_SIZE : int64;
+
+    // the actual accepted "Fill-State" of the dynamic Part of the TABLE
+    DYNAMIC_TABLE_SIZE : int64;
+
+
+    //
+    constructor Create(Size : int64 = 4096);
 
      // COMPRESSED DATA
      property Wire : RawByteString read getWire write setWire;
 
      // TABLE (the dynamic part)
      function DynTABLE : TStringList;
+     function DebugStrings : TStringList;
 
      procedure Save(Stream:TStream);
      procedure Decode; // Wire -> Header-Strings
      procedure Encode; // Header-Strings -> Wire
 
      class function HexStrToRawByteString(s:String):RawByteString;
+     class function HuffmanOptionToString(H:Boolean):string;
  end;
 
 implementation
@@ -180,7 +195,10 @@ const
         { 59 } 'vary',
         { 60 } 'via',
         { 61 } 'www-authenticate' );
-
+ //  --------------------------------------------- start of dynamic Part
+ //     { 62 } "just-now-added-element=yes"   <--- String insert Point
+ //     { 63 } "add-a-minute-ago=ever"
+ //     { 64 } "old-element=aged"
  DYN_TABLE_FIRST_ELEMENT = 62;
  DYN_TABLE_ELEMENT_ADD_SIZE = 32;
 
@@ -416,6 +434,7 @@ begin
  rmIndex := pred(iTABLE.count);
  if (rmIndex>=DYN_TABLE_FIRST_ELEMENT) then
  begin
+  mDebug.add('del '+IntToStr(rmIndex)+' '+iTable[rmIndex]);
   dec(TABLE_SIZE,TokenSize(iTABLE[rmIndex]));
   iTABLE.delete(rmIndex);
   nTABLE.delete(rmIndex);
@@ -429,22 +448,23 @@ end;
 
 procedure THPACK.incTABLE(NameValuePair: string);
 var
-  NEW_SIZE_INCREMENT: Integer;
- NewIndex,k : integer;
+ NEW_SIZE_INCREMENT: Integer;
+ NewIndex, k : integer;
 begin
- NewIndex := min(iTABLE.count,DYN_TABLE_FIRST_ELEMENT);
- k := pos('=',NameValuePair);
+
+ NewIndex := min(iTABLE.count, DYN_TABLE_FIRST_ELEMENT);
+ k := pos('=', NameValuePair);
 
  if (NewIndex=DYN_TABLE_FIRST_ELEMENT) then
  begin
 
-  // RFC 4.4.  Entry Eviction When Adding New Entries
   NEW_SIZE_INCREMENT := TokenSize(NameValuePair);
 
-  while (TABLE_SIZE>0) and (TABLE_SIZE+NEW_SIZE_INCREMENT>MAXIMUM_TABLE_SIZE) do
+  // RFC 4.4.  Entry Eviction When Adding New Entries
+  while (TABLE_SIZE>0) and (TABLE_SIZE+NEW_SIZE_INCREMENT>DYNAMIC_TABLE_SIZE) do
    delTABLE;
 
-  if (NEW_SIZE_INCREMENT<=MAXIMUM_TABLE_SIZE) then
+  if (NEW_SIZE_INCREMENT<=DYNAMIC_TABLE_SIZE) then
   begin
    iTABLE.insert(NewIndex,NameValuePair);
    if (k=0) then
@@ -452,6 +472,14 @@ begin
    else
     nTABLE.insert(NewIndex,copy(NameValuePair,1,pred(k)));
    inc(TABLE_SIZE,NEW_SIZE_INCREMENT);
+  end else
+  begin
+    if (k>0) then
+     NameValuePair := copy(NameValuePair,1,pred(k));
+    mDebug.add(
+     {} 'WARNING: Client requests a storage of header-field '+
+     {} '"' + NameValuePair+ '"' +
+     {} ' knowing that there is no room for it');
   end;
 
  end else
@@ -467,24 +495,26 @@ begin
 
 end;
 
-procedure THPACK.shrinkTABLE;
+procedure THPACK.eviction;
 begin
- // shrink to fit MAXIMUM_TABLE_SIZE
- while (TABLE_SIZE>MAXIMUM_TABLE_SIZE) do
+ // shrink the Table to fit DYNAMIC_TABLE_SIZE
+ while (TABLE_SIZE>DYNAMIC_TABLE_SIZE) do
   delTABLE;
 end;
 
-constructor THPACK.Create;
+constructor THPACK.Create(Size : int64 = 4096);
 var
  n,k : integer;
 begin
-  MAXIMUM_TABLE_SIZE := 256;
+  MAXIMUM_TABLE_SIZE := Size;
+  DYNAMIC_TABLE_SIZE := Size;
   iTABLE := TStringList.Create;
   nTABLE := TStringList.Create;
+  mDebug := TStringList.Create;
   for n := low(STATIC_TABLE) to high(STATIC_TABLE) do
    incTABLE(STATIC_TABLE[n]);
 
-  inherited;
+  inherited Create;
 end;
 
 function THPACK.DynTABLE: TStringList;
@@ -494,6 +524,11 @@ begin
   result := TStringList.create;
   for n := DYN_TABLE_FIRST_ELEMENT to pred(iTABLE.count) do
     result.add(iTABLE[n]);
+end;
+
+function THPACK.DebugStrings: TStringList;
+begin
+  result := mDebug;
 end;
 
 procedure THPACK.Save(Stream: TStream);
@@ -2088,8 +2123,7 @@ var
  NameString : string;
  NameValuePair: string;
  TABLE_INDEX : Integer;
- H : boolean;
- NEW_MAXIMUM_TABLE_SIZE : int64;
+ H,H1,H2 : boolean;
 begin
  BytePos := 0;
  BytePosLast := pred(length(iWire));
@@ -2117,6 +2151,7 @@ begin
       {} ' Elements');
 
     add(iTABLE[TABLE_INDEX]);
+    mDebug.add('INFO: "'+iTABLE[TABLE_INDEX]+'" C=C');
    end else
    begin
     // "0" ...
@@ -2125,7 +2160,7 @@ begin
       // "01" ...
       // RFC "6.2.1.  Literal Header Field with Incremental Indexing"
       TABLE_INDEX := I(6);
-      if TABLE_INDEX>0 then
+      if (TABLE_INDEX>0) then
       begin
         H := B;
         Octets := I(7);
@@ -2134,22 +2169,27 @@ begin
         else
           ValueString := O;
         NameValuePair := nTABLE[TABLE_INDEX]+'='+ValueString;
-      end else
+
+        mDebug.add('INFO: "'+NameValuePair+'" C='+HuffmanOptionToString(H));
+       end else
       begin
         // "01" "000000"
-        H := B;
+        H1 := B;
         Octets := I(7);
-        if H then
+        if H1 then
          NameString := fHuffman_decode
         else
          NameString := O;
-        H := B;
+        H2 := B;
         Octets := I(7);
-        if H then
+        if H2 then
          huffman_decode
         else
          ValueString := O;
         NameValuePair := NameString+'='+ValueString;
+
+        mDebug.add('INFO: "'+NameValuePair+'" '+HuffmanOptionToString(H1)+'='+HuffmanOptionToString(H2));
+
       end;
       add(NameValuePair);
       incTABLE(NameValuePair);
@@ -2160,16 +2200,18 @@ begin
      if B then
      begin
        // "001"
+
        // RFC: "6.3. Dynamic Table Size Update"
-       NEW_MAXIMUM_TABLE_SIZE := I(5);
-       if (NEW_MAXIMUM_TABLE_SIZE<MAXIMUM_TABLE_SIZE) then
-       begin
-         MAXIMUM_TABLE_SIZE := NEW_MAXIMUM_TABLE_SIZE;
-         shrinkTABLE;
-       end else
-       begin
-        raise Exception.Create('Illegal Request to increase MAXIMUM_TABLE_SIZE');
-       end;
+       DYNAMIC_TABLE_SIZE := I(5);
+
+       if (TABLE_SIZE<=DYNAMIC_TABLE_SIZE) then
+        mDebug.add('WARNING: Client requests an actual '+IntToStr(TABLE_SIZE)+' Byte(s) big TABLE purged to '+IntToStr(DYNAMIC_TABLE_SIZE)+ ' Byte(s)');
+
+       if (DYNAMIC_TABLE_SIZE>=MAXIMUM_TABLE_SIZE) then
+        raise Exception.Create('Illegal DYNAMIC_TABLE_SIZE request to purge higher than MAXIMUM_TABLE_SIZE');
+
+       // RFC: "4.3.  Entry Eviction When Dynamic Table Size Changes"
+       eviction;
 
      end else
      begin
@@ -2352,6 +2394,14 @@ begin
  result := '';
  for n := 1 to length(s) DIV 2 do
   result := result + chr(StrToInt('$'+copy(s,pred(n*2),2)));
+end;
+
+class function THPACK.HuffmanOptionToString(H: Boolean): string;
+begin
+  if H then
+   result := 'H'
+  else
+    result := 'S';
 end;
 
 end.

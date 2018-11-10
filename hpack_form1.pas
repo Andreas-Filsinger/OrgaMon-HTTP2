@@ -27,6 +27,8 @@ type
     Button18: TButton;
     Button19: TButton;
     Button2: TButton;
+    Button20: TButton;
+    Button21: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -64,6 +66,8 @@ type
     procedure Button18Click(Sender: TObject);
     procedure Button19Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
+    procedure Button20Click(Sender: TObject);
+    procedure Button21Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -137,9 +141,30 @@ begin
     except
     end;
   end;
-  memo1.Lines.add('{-----');
-  memo1.Lines.addStrings(HPACK);
-  memo1.Lines.add('-----}');
+  with HPACK do
+  begin
+    memo1.Lines.add('// DebugStrings');
+    memo1.Lines.addStrings(DebugStrings);
+    memo1.Lines.add('');
+
+    memo1.Lines.add('// HTTP Header-Fields');
+    memo1.Lines.addStrings(HPACK);
+    memo1.Lines.add('');
+
+    memo1.Lines.add('// new HPACK-TABLE');
+    memo1.Lines.addStrings(dynTable);
+    memo1.Lines.add('');
+  end;
+end;
+
+procedure TForm1.Button20Click(Sender: TObject);
+begin
+  memo4.lines.clear;
+end;
+
+procedure TForm1.Button21Click(Sender: TObject);
+begin
+  memo1.lines.clear;
 end;
 
 procedure TForm1.Button10Click(Sender: TObject);
