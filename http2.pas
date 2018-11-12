@@ -131,15 +131,6 @@ Type
 
      FRequest : TRequestMethod;
 
-     // Connection Settings
-     SETTINGS_MAX_CONCURRENT_STREAMS_LOCAL : Integer;
-     SETTINGS_MAX_CONCURRENT_STREAMS_REMOTE: Integer;
-     SETTINGS_HEADER_TABLE_SIZE: Integer;
-     SETTINGS_INITIAL_WINDOW_SIZE: Integer;
-     SETTINGS_MAX_FRAME_SIZE: Integer;
-     SETTINGS_MAX_HEADER_LIST_SIZE: Integer;
-     SETTINGS_PUSH_ENABLED: boolean;
-
      // Data-Objects
      Headers: THPACK;
      Streams: TList;
@@ -160,9 +151,11 @@ Type
        AutomataState : Byte;
        ParseRounds : Integer;
 
+       //
+       constructor Create;
+
        function StrictHTTP2Context: PSSL_CTX;
        procedure TLS_Accept(FD: cint);
-       procedure Init;
 
        // Parser
        procedure Parse;
@@ -526,7 +519,15 @@ begin
 // INITIAL_WINDOW_SIZE=131072
 // MAX_FRAME_SIZE=16384
 
-
+  {
+  // Connection Settings
+SETTINGS_MAX_CONCURRENT_STREAMS_LOCAL : Integer;
+SETTINGS_MAX_CONCURRENT_STREAMS_REMOTE: Integer;
+SETTINGS_HEADER_TABLE_SIZE: Integer;
+SETTINGS_INITIAL_WINDOW_SIZE: Integer;
+SETTINGS_MAX_FRAME_SIZE: Integer;
+SETTINGS_MAX_HEADER_LIST_SIZE: Integer;
+SETTINGS_PUSH_ENABLED: boolean;
 
  if (SETTINGS_HEADER_TABLE_SIZE=0) then
  begin
@@ -551,6 +552,8 @@ begin
   SETTINGS_MAX_FRAME_SIZE := 1048576;
   add(SETTINGS_TYPE_MAX_FRAME_SIZE,SETTINGS_MAX_FRAME_SIZE);
  end;
+   }
+
 
  // unused
 //      SETTINGS_MAX_HEADER_LIST_SIZE: Integer;
@@ -720,6 +723,11 @@ var
   n,m : Integer;
   ContentSize: Integer;
   H, D : RawByteString;
+
+  // Streams
+  S : THTTP2_Stream;
+  StreamFound : boolean;
+
 begin
  ParserSave;
  repeat
@@ -791,8 +799,6 @@ begin
             mDebug.add(' Stream '+IntToStr(Cardinal(Stream_ID)));
             ContentSize := Cardinal(Len);
 
-
-
             if (Flags and FLAG_PADDED=FLAG_PADDED) then
             begin
                with PFRAME_HEADERS_PADDING(@ClientNoise[CN_Pos2])^ do
@@ -828,25 +834,21 @@ begin
               H := H + IntToHex(ClientNoise[CN_Pos2+n],2);
             mDebug.add(' HEADER '+ H);
 
-            //
-            {
+            // Auto-Create the Headers, if Client has no special
+            // requirements for the MAXIMUM_TABLE_SIZE
             if not(assigned(Headers)) then
+             Headers := THPACK.Create;
+
+            setLength(H,ContentSize);
+            move(ClientNoise[CN_Pos2],H[1],ContentSize);
+            with Headers do
             begin
-                   Headers := THPACK.Create;
-                     Headers.MAXIMUM_TABLE_SIZE:= 65536;
+             Wire := H;
+             Decode;
             end;
+            mDebug.addStrings(Headers.DebugStrings);
 
-              setLength(H,HeaderContentSize);
-              move(ClientNoise[CN_Pos2],H[1],HeaderContentSize);
-              with Headers do
-              begin
-               Wire := H;
-               Decode;
-              end;
-              mDebug.addStrings(Headers);
-             }
-
-            end;
+           end;
           FRAME_TYPE_PRIORITY : begin;
 
             if (Cardinal(Len)<>5) then
@@ -863,6 +865,29 @@ begin
                {} INtTOstr(cardinal(Stream_ID)) + '.' +
                {} inttostr(cardinal(Stream_Dependency))+' Weight='+
                {} IntToStr(Weight));
+
+            // find stream
+            StreamFound := false;
+            for n := 0 to pred(Streams.Count) do
+              if (cardinal(Stream_ID)=cardinal(THTTP2_Stream(Streams[n]).ID)) then
+              begin
+               StreamFound := true;
+                break;
+              end;
+
+            // Auto-Create if not found
+            if not(StreamFound) then
+            begin
+              S := THTTP2_Stream.Create;
+              with S do
+              begin
+               ID := cardinal(Stream_ID);
+               Parent:= cardinal(Stream_Dependency);
+               weight := Weight;
+              end;
+              Streams.add(S);
+            end;
+
             end;
 
           end;
@@ -891,31 +916,33 @@ begin
                 begin
                   mDebug.add(' '+SETTINGS_NAMES[cardinal(SETTING_ID)]+' '+IntToStr(Cardinal(Value)));
 
-                  case cardinal(SETTING_ID) of
-                     SETTINGS_TYPE_HEADER_TABLE_SIZE:begin
-                      SETTINGS_HEADER_TABLE_SIZE := Cardinal(Value);
-                     Headers := THPACK.Create;
-                     Headers.MAXIMUM_TABLE_SIZE:=SETTINGS_HEADER_TABLE_SIZE;
-                    end;
-                    SETTINGS_TYPE_MAX_CONCURRENT_STREAMS :begin
-                     SETTINGS_MAX_CONCURRENT_STREAMS_REMOTE := Cardinal(Value);
-                    end;
-                    SETTINGS_TYPE_INITIAL_WINDOW_SIZE :begin
-                      SETTINGS_INITIAL_WINDOW_SIZE:= Cardinal(Value);
-                    end;
-                    SETTINGS_TYPE_MAX_FRAME_SIZE :begin
-                      SETTINGS_MAX_FRAME_SIZE := Cardinal(Value);
-                    end;
-                    SETTINGS_TYPE_MAX_HEADER_LIST_SIZE :begin
-                      SETTINGS_MAX_HEADER_LIST_SIZE := Cardinal(Value);
-                    end;
-                    SETTINGS_TYPE_ENABLE_PUSH :begin
-                      SETTINGS_PUSH_ENABLED := Cardinal(Value)=1;
+                  with SETTINGS_REMOTE do
+                    case cardinal(SETTING_ID) of
+                       SETTINGS_TYPE_HEADER_TABLE_SIZE:begin
+                        HEADER_TABLE_SIZE := Cardinal(Value);
+                        if assigned(Headers) then
+                         Headers.set_MAXIMUM_TABLE_SIZE(HEADER_TABLE_SIZE)
+                        else
+                         Headers := THPACK.Create(HEADER_TABLE_SIZE);
 
-
-                    end;
+                      end;
+                      SETTINGS_TYPE_MAX_CONCURRENT_STREAMS :begin
+                       MAX_CONCURRENT_STREAMS := Cardinal(Value);
+                      end;
+                      SETTINGS_TYPE_INITIAL_WINDOW_SIZE :begin
+                        INITIAL_WINDOW_SIZE:= Cardinal(Value);
+                      end;
+                      SETTINGS_TYPE_MAX_FRAME_SIZE :begin
+                        MAX_FRAME_SIZE := Cardinal(Value);
+                      end;
+                      SETTINGS_TYPE_MAX_HEADER_LIST_SIZE :begin
+                        MAX_HEADER_LIST_SIZE := Cardinal(Value);
+                      end;
+                      SETTINGS_TYPE_ENABLE_PUSH :begin
+                        ENABLE_PUSH := Cardinal(Value);
+                     end;
                   else
-                    // undone SETTING
+                    // unknown setting ID - ignore
                   end;
                 end;
                 inc(CN_Pos2,SizeOf_SETTINGS);
@@ -929,6 +956,11 @@ begin
               //debug(H);
             end;
           FRAME_TYPE_PUSH_PROMISE : begin
+
+             mDebug.add('ERROR: Servers can not process PUSH_PROMISE frames');
+             FatalError := true;
+             break;
+
             end;
           FRAME_TYPE_PING : begin
 
@@ -1222,6 +1254,14 @@ end;
 
 { THTTP2_Connection }
 
+constructor THTTP2_Connection.Create;
+begin
+  inherited Create;
+  Streams:= TList.create;
+  SETTINGS := THTTP2_Settings.create;
+  SETTINGS_REMOTE := THTTP2_Settings.create;
+end;
+
 function THTTP2_Connection.StrictHTTP2Context: PSSL_CTX;
 var
    cs_METH : PSSL_METHOD;
@@ -1417,23 +1457,11 @@ begin
   end;
 end;
 
-procedure THTTP2_Connection.Init;
-begin
-
- // create a security context
- CTX := StrictHTTP2Context;
- if not(assigned(CTX))  then
-   raise Exception.Create('SSL Init Fail');
-
- Streams:= TList.create;
-
-end;
-
 function THTTP2_Connection.write(buf: Pointer; num: cint): cint; overload;
 begin
  result := SSL_write(SSL,@buf,num);
 // result := num;
- mDebug.Add(IntTostr(result)+'/'+IntToStr(num)+' Bytes written ...');
+ mDebug.Add(IntTostr(result)+'/'+IntToStr(num)+' Byte(s) written ...');
 end;
 
 function THTTP2_Connection.write(W: RawByteString): cint;

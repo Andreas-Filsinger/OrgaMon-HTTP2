@@ -454,10 +454,9 @@ begin
    HTTP2 := THTTP2_Connection.create;
    HTTP2.OnRequest := @Request;
    ShowDebugmessages;
-   HTTP2.CTX:=   HTTP2.StrictHTTP2Context;
+   HTTP2.CTX:= HTTP2.StrictHTTP2Context;
    ShowDebugmessages;
   end;
-
 end;
 
 procedure TForm1.Button5Click(Sender: TObject);

@@ -35,6 +35,10 @@ interface
 uses
   Classes, SysUtils;
 
+
+const
+ DEFAULT_MAXIMUM_TABLE_SIZE = 4096;
+
 type
 
  { THPACK }
@@ -108,7 +112,7 @@ type
     DYNAMIC_TABLE_SIZE : int64;
 
     //
-    constructor Create(Size : int64 = 4096);
+    constructor Create(Size : int64 = DEFAULT_MAXIMUM_TABLE_SIZE);
 
     // COMPRESSED DATA
     property Wire : RawByteString read getWire write setWire;
@@ -116,6 +120,8 @@ type
     // TABLE (the dynamic part)
     function DynTABLE : TStringList;
     function DebugStrings : TStringList;
+
+    procedure set_MAXIMUM_TABLE_SIZE(Size: int64 = DEFAULT_MAXIMUM_TABLE_SIZE);
 
     procedure Save(Stream:TStream);
     procedure Decode; // Wire -> Header-Strings
@@ -445,7 +451,7 @@ begin
  rmIndex := pred(iTABLE.count);
  if (rmIndex>=DYN_TABLE_FIRST_ELEMENT) then
  begin
-  mDebug.add('del '+IntToStr(rmIndex)+' '+iTable[rmIndex]);
+  mDebug.add('del '+IntToStr(rmIndex)+' "'+iTable[rmIndex]+'"');
   dec(TABLE_SIZE,TokenSize(iTABLE[rmIndex]));
   iTABLE.delete(rmIndex);
   nTABLE.delete(rmIndex);
@@ -539,7 +545,16 @@ end;
 
 function THPACK.DebugStrings: TStringList;
 begin
-  result := mDebug;
+  result := TStringList.create;
+  result.addStrings(mDebug);
+  mDebug.clear;
+end;
+
+procedure THPACK.set_MAXIMUM_TABLE_SIZE(Size: int64);
+begin
+  MAXIMUM_TABLE_SIZE := Size;
+  DYNAMIC_TABLE_SIZE := Size;
+  eviction;
 end;
 
 procedure THPACK.Save(Stream: TStream);
@@ -2390,7 +2405,7 @@ begin
   if H then
    result := 'H'
   else
-    result := 'S';
+   result := 'S';
 end;
 
 end.
