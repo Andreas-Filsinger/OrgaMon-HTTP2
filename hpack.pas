@@ -2123,7 +2123,8 @@ var
  NameString : string;
  NameValuePair: string;
  TABLE_INDEX : Integer;
- H,H1,H2 : boolean;
+ H_Name,H_Value : boolean;
+ Binary_Representation_Protected : boolean;
 begin
  BytePos := 0;
  BytePosLast := pred(length(iWire));
@@ -2151,7 +2152,7 @@ begin
       {} ' Elements');
 
     add(iTABLE[TABLE_INDEX]);
-    mDebug.add('INFO: "'+iTABLE[TABLE_INDEX]+'" C=C');
+    mDebug.add('INFO: * "'+iTABLE[TABLE_INDEX]+'" C=C');
    end else
    begin
     // "0" ...
@@ -2162,33 +2163,33 @@ begin
       TABLE_INDEX := I(6);
       if (TABLE_INDEX>0) then
       begin
-        H := B;
+        H_Value := B;
         Octets := I(7);
-        if H then
+        if H_Value then
          huffman_decode
         else
           ValueString := O;
         NameValuePair := nTABLE[TABLE_INDEX]+'='+ValueString;
 
-        mDebug.add('INFO: "'+NameValuePair+'" C='+HuffmanOptionToString(H));
+        mDebug.add('INFO: + "'+NameValuePair+'" C='+HuffmanOptionToString(H_Value));
        end else
       begin
         // "01" "000000"
-        H1 := B;
+        H_Name := B;
         Octets := I(7);
-        if H1 then
+        if H_Name then
          NameString := fHuffman_decode
         else
          NameString := O;
-        H2 := B;
+        H_Value := B;
         Octets := I(7);
-        if H2 then
+        if H_Value then
          huffman_decode
         else
          ValueString := O;
         NameValuePair := NameString+'='+ValueString;
 
-        mDebug.add('INFO: "'+NameValuePair+'" '+HuffmanOptionToString(H1)+'='+HuffmanOptionToString(H2));
+        mDebug.add('INFO: + "'+NameValuePair+'" '+HuffmanOptionToString(H_Name)+'='+HuffmanOptionToString(H_Value));
 
       end;
       add(NameValuePair);
@@ -2216,69 +2217,43 @@ begin
      end else
      begin
       // "000 ..."
-      if B then
-      begin
-       // "0001"
-       // RFC "6.2.3.  Literal Header Field Never Indexed"
+      Binary_Representation_Protected := B;
+
+      // "0000"
+      // RFC "6.2.2.  Literal Header Field without Indexing"
+
+      // "0001"
+      // RFC "6.2.3.  Literal Header Field Never Indexed"
        TABLE_INDEX := I(4);
        if (TABLE_INDEX>0) then
        begin
-         H := B;
+         H_Value := B;
          Octets := I(7);
-         if H then
+         if H_Value then
           huffman_decode
          else
           ValueString := O;
          add(nTABLE[TABLE_INDEX]+'='+ValueString);
+
+         mDebug.add('INFO: - "'+nTABLE[TABLE_INDEX]+'='+ValueString+'" C='+HuffmanOptionToString(H_Value));
        end else
        begin
          // "0001" "0000"
-         H := B;
+         H_Name := B;
          Octets := I(7);
-         if H then
+         if H_Name then
           NameString := fHuffman_decode
          else
           NameString := O;
-         H := B;
+         H_Value := B;
          Octets := I(7);
-         if H then
+         if H_Value then
           huffman_decode
          else
           ValueString := O;
          add(NameString+'='+ValueString);
+         mDebug.add('INFO: - "'+NameString+'='+ValueString+'" '+HuffmanOptionToString(H_Name)+'='+HuffmanOptionToString(H_Value));
        end;
-      end else
-      begin
-       // "0000"
-       // RFC "6.2.2.  Literal Header Field without Indexing"
-       TABLE_INDEX := I(4);
-       if (TABLE_INDEX>0) then
-       begin
-         H := B;
-         Octets := I(7);
-         if H then
-          huffman_decode
-         else
-           ValueString := O;
-         add(nTABLE[TABLE_INDEX]+'='+ValueString);
-       end else
-       begin
-        // "0000" "0000"
-        H := B;
-        Octets := I(7);
-        if H then
-         NameString := fhuffman_decode
-        else
-         NameString := O;
-        H := B;
-        Octets := I(7);
-        if H then
-         huffman_decode
-        else
-         ValueString := O;
-        add(NameString+'='+ValueString);
-       end;
-      end;
      end;
     end;
    end;
