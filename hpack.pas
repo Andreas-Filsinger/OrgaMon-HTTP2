@@ -91,6 +91,7 @@ type
     // decrease TABLE_SIZE
     procedure delTABLE;
 
+    // shrink the TABLE so TABLE_SIZE<=DYNAMIC_TABLE_SIZE is true
     procedure eviction;
 
    public
@@ -106,23 +107,22 @@ type
     // the actual accepted "Fill-State" of the dynamic Part of the TABLE
     DYNAMIC_TABLE_SIZE : int64;
 
-
     //
     constructor Create(Size : int64 = 4096);
 
-     // COMPRESSED DATA
-     property Wire : RawByteString read getWire write setWire;
+    // COMPRESSED DATA
+    property Wire : RawByteString read getWire write setWire;
 
-     // TABLE (the dynamic part)
-     function DynTABLE : TStringList;
-     function DebugStrings : TStringList;
+    // TABLE (the dynamic part)
+    function DynTABLE : TStringList;
+    function DebugStrings : TStringList;
 
-     procedure Save(Stream:TStream);
-     procedure Decode; // Wire -> Header-Strings
-     procedure Encode; // Header-Strings -> Wire
+    procedure Save(Stream:TStream);
+    procedure Decode; // Wire -> Header-Strings
+    procedure Encode; // Header-Strings -> Wire
 
-     class function HexStrToRawByteString(s:String):RawByteString;
-     class function HuffmanOptionToString(H:Boolean):string;
+    class function HexStrToRawByteString(s:String):RawByteString;
+    class function HuffmanOptionToString(H:Boolean):string;
  end;
 
 implementation
@@ -196,9 +196,10 @@ const
         { 60 } 'via',
         { 61 } 'www-authenticate' );
  //  --------------------------------------------- start of dynamic Part
- //     { 62 } "just-now-added-element=yes"   <--- String insert Point
- //     { 63 } "add-a-minute-ago=ever"
- //     { 64 } "old-element=aged"
+ //     { 62 } "sample-just-now-added-element=yes"   <--- String insert Point
+ //     { 63 } "sample-add-a-minute-ago=ever"
+ //     { 64 } "sample-old-element=aged"
+
  DYN_TABLE_FIRST_ELEMENT = 62;
  DYN_TABLE_ELEMENT_ADD_SIZE = 32;
 
@@ -221,23 +222,33 @@ const
 // RFC : "Appendix B.  Huffman Code"
 
 RFC_7541_Appendix_B_Bits : array[0..256] of QWord = (
-  $1ff8, $7fffd8, $fffffe2, $fffffe3, $fffffe4, $fffffe5, $fffffe6, $fffffe7, $fffffe8, $ffffea, $3ffffffc, $fffffe9, $fffffea, $3ffffffd, $fffffeb, $fffffec,
-  $fffffed, $fffffee, $fffffef, $ffffff0, $ffffff1, $ffffff2, $3ffffffe, $ffffff3, $ffffff4, $ffffff5, $ffffff6, $ffffff7, $ffffff8, $ffffff9, $ffffffa, $ffffffb,
+  $1ff8, $7fffd8, $fffffe2, $fffffe3, $fffffe4, $fffffe5, $fffffe6, $fffffe7,
+  $fffffe8, $ffffea, $3ffffffc, $fffffe9, $fffffea, $3ffffffd, $fffffeb, $fffffec,
+  $fffffed, $fffffee, $fffffef, $ffffff0, $ffffff1, $ffffff2, $3ffffffe, $ffffff3,
+  $ffffff4, $ffffff5, $ffffff6, $ffffff7, $ffffff8, $ffffff9, $ffffffa, $ffffffb,
   $14, $3f8, $3f9, $ffa, $1ff9, $15, $f8, $7fa, $3fa, $3fb, $f9, $7fb, $fa, $16, $17, $18,
   $0, $1, $2, $19, $1a, $1b, $1c, $1d, $1e, $1f, $5c, $fb, $7ffc, $20, $ffb, $3fc,
   $1ffa, $21, $5d, $5e, $5f, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $6a,
   $6b, $6c, $6d, $6e, $6f, $70, $71, $72, $fc, $73, $fd, $1ffb, $7fff0, $1ffc, $3ffc, $22,
   $7ffd, $3, $23, $4, $24, $5, $25, $26, $27, $6, $74, $75, $28, $29, $2a, $7,
   $2b, $76, $2c, $8, $9, $2d, $77, $78, $79, $7a, $7b, $7ffe, $7fc, $3ffd, $1ffd, $ffffffc,
-  $fffe6, $3fffd2, $fffe7, $fffe8, $3fffd3, $3fffd4, $3fffd5, $7fffd9, $3fffd6, $7fffda, $7fffdb, $7fffdc, $7fffdd, $7fffde, $ffffeb, $7fffdf,
-  $ffffec, $ffffed, $3fffd7, $7fffe0, $ffffee, $7fffe1, $7fffe2, $7fffe3, $7fffe4, $1fffdc, $3fffd8, $7fffe5, $3fffd9, $7fffe6, $7fffe7, $ffffef,
-  $3fffda, $1fffdd, $fffe9, $3fffdb, $3fffdc, $7fffe8, $7fffe9, $1fffde, $7fffea, $3fffdd, $3fffde, $fffff0, $1fffdf, $3fffdf, $7fffeb, $7fffec,
-  $1fffe0, $1fffe1, $3fffe0, $1fffe2, $7fffed, $3fffe1, $7fffee, $7fffef, $fffea, $3fffe2, $3fffe3, $3fffe4, $7ffff0, $3fffe5, $3fffe6, $7ffff1,
-  $3ffffe0, $3ffffe1, $fffeb, $7fff1, $3fffe7, $7ffff2, $3fffe8, $1ffffec, $3ffffe2, $3ffffe3, $3ffffe4, $7ffffde, $7ffffdf, $3ffffe5, $fffff1, $1ffffed,
-  $7fff2, $1fffe3, $3ffffe6, $7ffffe0, $7ffffe1, $3ffffe7, $7ffffe2, $fffff2, $1fffe4, $1fffe5, $3ffffe8, $3ffffe9, $ffffffd, $7ffffe3, $7ffffe4, $7ffffe5,
-  $fffec, $fffff3, $fffed, $1fffe6, $3fffe9, $1fffe7, $1fffe8, $7ffff3, $3fffea, $3fffeb, $1ffffee, $1ffffef, $fffff4, $fffff5, $3ffffea, $7ffff4,
-  $3ffffeb, $7ffffe6, $3ffffec, $3ffffed, $7ffffe7, $7ffffe8, $7ffffe9, $7ffffea, $7ffffeb, $ffffffe, $7ffffec, $7ffffed, $7ffffee, $7ffffef, $7fffff0, $3ffffee,
+  $fffe6, $3fffd2, $fffe7, $fffe8, $3fffd3, $3fffd4, $3fffd5, $7fffd9, $3fffd6, $7fffda,
+  $7fffdb, $7fffdc, $7fffdd, $7fffde, $ffffeb, $7fffdf, $ffffec, $ffffed, $3fffd7, $7fffe0,
+  $ffffee, $7fffe1, $7fffe2, $7fffe3, $7fffe4, $1fffdc, $3fffd8, $7fffe5, $3fffd9, $7fffe6,
+  $7fffe7, $ffffef, $3fffda, $1fffdd, $fffe9, $3fffdb, $3fffdc, $7fffe8, $7fffe9, $1fffde,
+  $7fffea, $3fffdd, $3fffde, $fffff0, $1fffdf, $3fffdf, $7fffeb, $7fffec,
+  $1fffe0, $1fffe1, $3fffe0, $1fffe2, $7fffed, $3fffe1, $7fffee, $7fffef,
+  $fffea, $3fffe2, $3fffe3, $3fffe4, $7ffff0, $3fffe5, $3fffe6, $7ffff1,
+  $3ffffe0, $3ffffe1, $fffeb, $7fff1, $3fffe7, $7ffff2, $3fffe8, $1ffffec,
+  $3ffffe2, $3ffffe3, $3ffffe4, $7ffffde, $7ffffdf, $3ffffe5, $fffff1, $1ffffed,
+  $7fff2, $1fffe3, $3ffffe6, $7ffffe0, $7ffffe1, $3ffffe7, $7ffffe2, $fffff2,
+  $1fffe4, $1fffe5, $3ffffe8, $3ffffe9, $ffffffd, $7ffffe3, $7ffffe4, $7ffffe5,
+  $fffec, $fffff3, $fffed, $1fffe6, $3fffe9, $1fffe7, $1fffe8, $7ffff3, $3fffea,
+  $3fffeb, $1ffffee, $1ffffef, $fffff4, $fffff5, $3ffffea, $7ffff4,
+  $3ffffeb, $7ffffe6, $3ffffec, $3ffffed, $7ffffe7, $7ffffe8, $7ffffe9, $7ffffea,
+  $7ffffeb, $ffffffe, $7ffffec, $7ffffed, $7ffffee, $7ffffef, $7fffff0, $3ffffee,
   $3fffffff);
+
 RFC_7541_Appendix_B_Length : array[0..256] of byte = (
   13, 23, 28, 28, 28, 28, 28, 28, 28, 24, 30, 28, 28, 30, 28, 28,
   28, 28, 28, 28, 28, 28, 30, 28, 28, 28, 28, 28, 28, 28, 28, 28,
@@ -2152,7 +2163,7 @@ begin
       {} ' Elements');
 
     add(iTABLE[TABLE_INDEX]);
-    mDebug.add('INFO: * "'+iTABLE[TABLE_INDEX]+'" C=C');
+    mDebug.add('INFO: C=C "'+iTABLE[TABLE_INDEX]+'" *');
    end else
    begin
     // "0" ...
@@ -2171,8 +2182,8 @@ begin
           ValueString := O;
         NameValuePair := nTABLE[TABLE_INDEX]+'='+ValueString;
 
-        mDebug.add('INFO: + "'+NameValuePair+'" C='+HuffmanOptionToString(H_Value));
-       end else
+        mDebug.add('INFO: C='+HuffmanOptionToString(H_Value)+' "'+NameValuePair+'" +');
+      end else
       begin
         // "01" "000000"
         H_Name := B;
@@ -2189,7 +2200,7 @@ begin
          ValueString := O;
         NameValuePair := NameString+'='+ValueString;
 
-        mDebug.add('INFO: + "'+NameValuePair+'" '+HuffmanOptionToString(H_Name)+'='+HuffmanOptionToString(H_Value));
+        mDebug.add('INFO: '+HuffmanOptionToString(H_Name)+'='+HuffmanOptionToString(H_Value)+ ' "'+NameValuePair+'" +');
 
       end;
       add(NameValuePair);
@@ -2206,7 +2217,9 @@ begin
        DYNAMIC_TABLE_SIZE := I(5);
 
        if (TABLE_SIZE<=DYNAMIC_TABLE_SIZE) then
-        mDebug.add('WARNING: Client requests an actual '+IntToStr(TABLE_SIZE)+' Byte(s) big TABLE purged to '+IntToStr(DYNAMIC_TABLE_SIZE)+ ' Byte(s)');
+        mDebug.add('WARNING: Client requests an actual '+IntToStr(TABLE_SIZE)+' Byte(s) big TABLE purged to '+IntToStr(DYNAMIC_TABLE_SIZE)+ ' Byte(s)')
+       else
+        mDebug.add('INFO: DYNAMIC_TABLE_SIZE '+inttostr(DYNAMIC_TABLE_SIZE));
 
        if (DYNAMIC_TABLE_SIZE>=MAXIMUM_TABLE_SIZE) then
         raise Exception.Create('Illegal DYNAMIC_TABLE_SIZE request to purge higher than MAXIMUM_TABLE_SIZE');
@@ -2233,9 +2246,9 @@ begin
           huffman_decode
          else
           ValueString := O;
-         add(nTABLE[TABLE_INDEX]+'='+ValueString);
+         NameValuePair := nTABLE[TABLE_INDEX]+'='+ValueString;
 
-         mDebug.add('INFO: - "'+nTABLE[TABLE_INDEX]+'='+ValueString+'" C='+HuffmanOptionToString(H_Value));
+         mDebug.add('INFO: C='+HuffmanOptionToString(H_Value)+' "'+NameValuePair+'" -');
        end else
        begin
          // "0001" "0000"
@@ -2251,9 +2264,10 @@ begin
           huffman_decode
          else
           ValueString := O;
-         add(NameString+'='+ValueString);
-         mDebug.add('INFO: - "'+NameString+'='+ValueString+'" '+HuffmanOptionToString(H_Name)+'='+HuffmanOptionToString(H_Value));
+         NameValuePair := NameString+'='+ValueString;
+         mDebug.add('INFO: '+HuffmanOptionToString(H_Name)+'='+HuffmanOptionToString(H_Value)+' "'+NameValuePair+'" -');
        end;
+       add(NameValuePair);
      end;
     end;
    end;
