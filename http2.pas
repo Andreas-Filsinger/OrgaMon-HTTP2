@@ -171,6 +171,8 @@ Type
        function r_SETTINGS_ACK : RawByteString;
        function r_SETTINGS : RawByteString;
        function r_WINDOW_UPDATE (ID:integer=0; Size_Increment: Integer=$7fffff) : RawByteString;
+       function r_HEADER (ID:Integer; H:THPACK) : RawByteString;
+       function r_DATA (ID:Integer; Content: RawByteString) : RawByteString;
 
        // write to the Connection
        function write(buf : Pointer;  num: cint): cint; overload;
@@ -301,9 +303,6 @@ type
   PFRAME_RST_STREAM = ^TFRAME_RST_STREAM;
 
   // RFC: "6.5.1.  SETTINGS Format"
-
-  { TFRAME_SETTINGS }
-
   TFRAME_SETTINGS = packed record
    SETTING_ID : TNum16Bit;
    Value      : TNum32Bit;
@@ -319,9 +318,6 @@ type
   PFRAME_GOAWAY = ^TFRAME_GOAWAY;
 
   // RFC: "6.9 WINDOW_UPDATE"
-
-  { TFRAME_WINDOW_UPDATE }
-
   TFRAME_WINDOW_UPDATE = packed record
    Window_Size_Increment : TNum32Bit;  // 1..2147483647
    function asString: RawByteString;
@@ -716,6 +712,37 @@ begin
  result := FRAME.asString + FRAME_WINDOW_UPDATE.asString;
 end;
 
+function THTTP2_Connection.r_HEADER(ID: Integer; H: THPACK): RawByteString;
+var
+ FRAME: THTTP2_FRAME;
+ HeadersRaw: RawByteString;
+begin
+ HeadersRaw := H.Wire;
+ with FRAME do
+ begin
+   Len := length(HeadersRaw);
+   Typ := FRAME_TYPE_HEADERS;
+   Flags := FLAG_END_HEADERS;
+   Stream_ID := ID;
+ end;
+ result := FRAME.asString + HeadersRaw;
+end;
+
+function THTTP2_Connection.r_DATA(ID: Integer; Content: RawByteString
+  ): RawByteString;
+var
+ FRAME: THTTP2_FRAME;
+begin
+ with FRAME do
+ begin
+   Len := length(Content);
+   Typ := FRAME_TYPE_DATA;
+   Flags := FLAG_END_STREAM;
+   Stream_ID := ID;
+ end;
+ result := FRAME.asString + Content;
+end;
+
 function THTTP2_Connection.PING(PayLoad:RawByteString; AsEcho: boolean = false):RawByteString;
 var
   Buf: array[0..pred(16*1024)] of byte;
@@ -873,6 +900,8 @@ begin
           if (Flags<>0) then
            mDebug.add(' Flags ['+FlagsAsString(Flags)+']');
 
+          mDebug.add(' Stream '+IntToStr(Cardinal(Stream_ID)));
+
          inc(CN_Pos,SizeOf_FRAME);
          CN_Pos2 := CN_pos;
 
@@ -891,7 +920,6 @@ begin
             end;
           FRAME_TYPE_HEADERS : begin
 
-            mDebug.add(' Stream '+IntToStr(Cardinal(Stream_ID)));
             ContentSize := Cardinal(Len);
 
             if (Flags and FLAG_PADDED=FLAG_PADDED) then
@@ -997,7 +1025,6 @@ begin
 
             with PFRAME_RST_STREAM(@ClientNoise[CN_Pos2])^ do
             begin
-             mDebug.add(' Stream_ID=' + INtTOstr(cardinal(Stream_ID)));
              mDebug.add(' Error_Code=' + ERROR_CODES[Cardinal(Error_Code)]);
             end;
 
@@ -1122,7 +1149,6 @@ begin
                break;
              end;
 
-             mDebug.add(' Stream ' + IntToStr(cardinal(Stream_ID)) );
              mDebug.add(' Window_Size_Increment ' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
 
             end;

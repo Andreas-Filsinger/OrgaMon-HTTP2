@@ -32,6 +32,7 @@ type
     Button22: TButton;
     Button23: TButton;
     Button24: TButton;
+    Button25: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -74,6 +75,7 @@ type
     procedure Button22Click(Sender: TObject);
     procedure Button23Click(Sender: TObject);
     procedure Button24Click(Sender: TObject);
+    procedure Button25Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -195,6 +197,15 @@ begin
  fHTTP2.debug(fHTTP2.r_WINDOW_UPDATE);
  memo3.lines.addstrings(HTTP2.mDebug);
  mDebug.clear;
+end;
+
+procedure TForm1.Button25Click(Sender: TObject);
+begin
+ ShowDebugMessages;
+ fHTTP2.debug(fHTTP2.r_DATA(0,'It works!'));
+ memo3.lines.addstrings(HTTP2.mDebug);
+ mDebug.clear;
+
 end;
 
 procedure TForm1.Button10Click(Sender: TObject);
