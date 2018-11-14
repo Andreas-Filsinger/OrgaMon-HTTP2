@@ -3,9 +3,9 @@ I modified nginx slightly to created a "real world HTTP2 log". The log contains 
 My Steps to do this:
 
 * Take one of your "Raspberry Pi 3"s
-* get the newest Version of the nginx-Build Script
+* get the newest Version of the nginx-Build Script. https://github.com/MatthewVance/nginx-build
 * add the line "--with-debug"
-* run it 
+* run it (this takes 20 Minutes)
 * modify "ngx_event_openssl.c" like i did
 * in "nginx"-Path do make
 * in "nginx"-Path do make install
@@ -19,8 +19,11 @@ So you get your first "Hello World" data, unencypted HTTP2-FRAMES
 
 SSL_read: 148
  < 505249202a20485454502f322e300d0a
+ 
  < 0d0a534d0d0a0d0a0000120400000000
+ 
  < 00000100010000000400020000000500
+ 
  < 00400000000408000000000000bf0001
  < 00000502000000000300000000c80000
  < 05020000000005000000006400000502
