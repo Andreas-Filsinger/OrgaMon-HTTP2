@@ -168,7 +168,9 @@ Type
        function StartFrames: RawByteString;
        function PING(PayLoad : RawByteString; AsEcho: boolean = false):RawByteString;
        function PAGE : RawByteString;
-       function SETTINGS_ACK : RawByteString;
+       function FRAME_SETTINGS_ACK : RawByteString;
+       function FRAME_SETTINGS : RawByteString;
+       function FRAME_WINDOW_UPDATE (ID:integer;
 
        // write to the Connection
        function write(buf : Pointer;  num: cint): cint; overload;
@@ -266,6 +268,8 @@ type
      Typ : Byte;
      Flags : Byte;
      Stream_ID : TNum31Bit; // 0,2,4..2147483648  even-numbered on servers
+
+     function asString : RawByteString;
    end;
    PHTTP2_FRAME_HEADER = ^THTTP2_FRAME;
 
@@ -297,9 +301,13 @@ type
   PFRAME_RST_STREAM = ^TFRAME_RST_STREAM;
 
   // RFC: "6.5.1.  SETTINGS Format"
+
+  { TFRAME_SETTINGS }
+
   TFRAME_SETTINGS = packed record
    SETTING_ID : TNum16Bit;
    Value      : TNum32Bit;
+   function asString: RawByteString;
   end;
   PFRAME_SETTINGS = ^TFRAME_SETTINGS;
 
@@ -464,6 +472,20 @@ begin
  delete(result,1,1);
 end;
 
+{ TFRAME_SETTINGS }
+
+function TFRAME_SETTINGS.AsString: RawByteString;
+begin
+ setLength(result,sizeof(TFRAME_SETTINGS));
+ move(SETTING_ID,result[1],sizeof(TFRAME_SETTINGS));
+end;
+
+function THTTP2_FRAME.asString: RawByteString;
+begin
+  SetLength(result,sizeof(THTTP2_FRAME));
+  move(Len,result[1],sizeof(THTTP2_FRAME));
+end;
+
 { THTTP2_Stream }
 
 class function THTTP2_Stream.StateToString(s: TStreamStates): string;
@@ -507,6 +529,12 @@ var
  end;
 
 begin
+  (*
+ a) SETTINGS
+ b) FRAME_WINDOW_UPDATE,   Stream 0  Window_Size_Increment 2147418112
+ c) FRAME_SETTINGS ACK
+ *)
+
  SettingsCount := 0;
 
  // A) SETTINGS - FRAME
@@ -601,12 +629,10 @@ SETTINGS_PUSH_ENABLED: boolean;
  move(Buf, result[1], SIZE);
 end;
 
-function THTTP2_Connection.SETTINGS_ACK: RawByteString;
+function THTTP2_Connection.FRAME_SETTINGS_ACK: RawByteString;
 var
  FRAME : THTTP2_FRAME;
 begin
-
- // A) SETTINGS - FRAME
  with FRAME do
  begin
    Len := 0;
@@ -620,6 +646,47 @@ begin
  move(FRAME, result[1], SizeOf_FRAME);
 end;
 
+function THTTP2_Connection.FRAME_SETTINGS: RawByteString;
+var
+  FRAME : THTTP2_FRAME;
+
+ function add(pSETTING_ID : UInt16;pValue : UInt32): RawByteString;
+ var
+  SETTING : TFRAME_SETTINGS;
+ begin
+   with SETTING do
+   begin
+     SETTING_ID := pSETTING_ID;
+     Value      := pValue;
+     result := AsString;
+   end;
+   FRAME.Len := cardinal(FRAME.Len) + sizeof(TFRAME_SETTINGS);
+ end;
+
+ var
+  Settings_Data : RawByteString;
+
+begin
+ with FRAME do
+ begin
+   Len := 0;
+   Typ := FRAME_TYPE_SETTINGS;
+   Flags := 0;
+   Stream_ID := 0;
+ end;
+
+ Settings_Data := '';
+ with SETTINGS do
+ begin
+   Settings_Data := Settings_Data + add(SETTINGS_TYPE_MAX_FRAME_SIZE,MAX_FRAME_SIZE);
+
+   Settings_Data := Settings_Data + add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE,INITIAL_WINDOW_SIZE);
+
+   Settings_Data := Settings_Data + add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS,MAX_CONCURRENT_STREAMS);
+ end;
+
+  result := FRAME.asString + Settings_Data;
+end;
 
 function THTTP2_Connection.PING(PayLoad:RawByteString; AsEcho: boolean = false):RawByteString;
 var
@@ -920,6 +987,8 @@ begin
                     case cardinal(SETTING_ID) of
                        SETTINGS_TYPE_HEADER_TABLE_SIZE:begin
                         HEADER_TABLE_SIZE := Cardinal(Value);
+
+                        // Auto-Create the HPACK-Headers
                         if assigned(Headers) then
                          Headers.set_MAXIMUM_TABLE_SIZE(HEADER_TABLE_SIZE)
                         else
@@ -941,8 +1010,6 @@ begin
                       SETTINGS_TYPE_ENABLE_PUSH :begin
                         ENABLE_PUSH := Cardinal(Value);
                      end;
-                  else
-                    // unknown setting ID - ignore
                   end;
                 end;
                 inc(CN_Pos2,SizeOf_SETTINGS);
@@ -1259,6 +1326,12 @@ begin
   inherited Create;
   Streams:= TList.create;
   SETTINGS := THTTP2_Settings.create;
+  with SETTINGS do
+  begin
+    MAX_CONCURRENT_STREAMS := 32;
+    INITIAL_WINDOW_SIZE := 65536;
+    MAX_FRAME_SIZE := 16777215;
+  end;
   SETTINGS_REMOTE := THTTP2_Settings.create;
 end;
 
@@ -1477,7 +1550,6 @@ var
   DD : string;
   n : integer;
 begin
-
  mDebug.add('--------------------------------------------');
  DD := '';
  for n := 1 to length(D) do
@@ -1492,7 +1564,6 @@ begin
  if (DD<>'') then
   mDebug.add(DD);
  mDebug.add('--------------------------------------------');
-
 end;
 
 procedure THTTP2_Connection.enqueue(D: RawByteString);

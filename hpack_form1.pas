@@ -29,6 +29,8 @@ type
     Button2: TButton;
     Button20: TButton;
     Button21: TButton;
+    Button22: TButton;
+    Button23: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -68,6 +70,8 @@ type
     procedure Button1Click(Sender: TObject);
     procedure Button20Click(Sender: TObject);
     procedure Button21Click(Sender: TObject);
+    procedure Button22Click(Sender: TObject);
+    procedure Button23Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -88,9 +92,9 @@ type
     // The File-Descriptor of the Connection
     // delivered by systemd or a own TCP Connection
     FD: longint;
-    HPACK: THPACK;
+    fHPACK: THPACK;
     Initialized: boolean;
-    HTTP2 : THTTP2_Connection;
+    fHTTP2: THTTP2_Connection;
 
     //
     procedure EnsureHTTP2;
@@ -126,9 +130,9 @@ var
   H : RawByteString;
   n : integer;
 begin
-  if not(assigned(HPACK)) then
-   HPACK := THPACK.Create;
-  with HPACK do
+  if not(assigned(fHPACK)) then
+   fHPACK := THPACK.Create;
+  with fHPACK do
   begin
     H := '';
     with memo4.lines do
@@ -141,14 +145,14 @@ begin
     except
     end;
   end;
-  with HPACK do
+  with fHPACK do
   begin
     memo1.Lines.add('// DebugStrings');
     memo1.Lines.addStrings(DebugStrings);
     memo1.Lines.add('');
 
     memo1.Lines.add('// HTTP Header-Fields');
-    memo1.Lines.addStrings(HPACK);
+    memo1.Lines.addStrings(fHPACK);
     memo1.Lines.add('');
 
     memo1.Lines.add('// new HPACK-TABLE');
@@ -167,6 +171,19 @@ begin
   memo1.lines.clear;
 end;
 
+procedure TForm1.Button22Click(Sender: TObject);
+begin
+ fHTTP2.debug(fHTTP2.FRAME_SETTINGS_ACK);
+ memo3.lines.addstrings(HTTP2.mDebug);
+end;
+
+procedure TForm1.Button23Click(Sender: TObject);
+begin
+ fHTTP2.debug(fHTTP2.FRAME_SETTINGS);
+ memo3.lines.addstrings(HTTP2.mDebug);
+
+end;
+
 procedure TForm1.Button10Click(Sender: TObject);
 begin
   ShowDebugMessages;
@@ -181,7 +198,7 @@ begin
    for n := low(buf) to high(buf) do
     buf[n] := random(256);
 
-   BytesWritten := HTTP2.write(@buf,sizeof(buf));
+   BytesWritten := fHTTP2.write(@buf,sizeof(buf));
    sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
 end;
 
@@ -191,15 +208,15 @@ var
 begin
  InitPathToTest;
  FName := PathToTests + edit4.Text + '.http2';
- HTTP2.LoadRawBytes(FName);
+ fHTTP2.LoadRawBytes(FName);
 
  if (pos('-0-',FName)>0) then
-  HTTP2.AutomataState := 0 // we expect a "Client Hello", in a initial packet!
+  fHTTP2.AutomataState := 0 // we expect a "Client Hello", in a initial packet!
  else
-  HTTP2.AutomataState := 1; // we have no Client Helo!
+  fHTTP2.AutomataState := 1; // we have no Client Helo!
 
- HTTP2.CN_Pos := 0; // ensure we start "here"
- HTTP2.Parse;
+ fHTTP2.CN_Pos := 0; // ensure we start "here"
+ fHTTP2.Parse;
 
  ShowDebugMessages;
 end;
@@ -208,7 +225,7 @@ procedure TForm1.Button13Click(Sender: TObject);
 var
     BytesWritten : cint;
 begin
-  BytesWritten := HTTP2.write(@CLIENT_PREFIX[1],length(CLIENT_PREFIX));
+  BytesWritten := fHTTP2.write(@CLIENT_PREFIX[1],length(CLIENT_PREFIX));
   sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
 end;
 
@@ -217,10 +234,10 @@ var
  n : integer;
  TABLE: TStringList;
 begin
-  if not(assigned(HPACK)) then
-   HPACK := THPACK.Create;
+  if not(assigned(fHPACK)) then
+   fHPACK := THPACK.Create;
 
-  with HPACK do
+  with fHPACK do
   begin
     TABLE := dynTABLE;
     for n := 0 to pred(TABLE.count) do
@@ -232,8 +249,8 @@ end;
 
 procedure TForm1.Button15Click(Sender: TObject);
 begin
-  if assigned(HPACK) then
-    FreeAndNil(HPACK);
+  if assigned(fHPACK) then
+    FreeAndNil(fHPACK);
   memo4.lines.clear;
   memo1.lines.clear;
 end;
@@ -300,15 +317,15 @@ var
  BytesWritten: cint;
  n : Integer;
 begin
-  D := HTTP2.PING(PING_PAYLOAD);
+  D := fHTTP2.PING(PING_PAYLOAD);
 
   // save it as "init"
   InitPathToTest;
-  HTTP2.SaveRawBytes(D,PathToTests+'ping.http2');
+  fHTTP2.SaveRawBytes(D,PathToTests+'ping.http2');
 
-  if assigned(HTTP2) then
+  if assigned(fHTTP2) then
   begin
-    BytesWritten := HTTP2.write(@D[1],length(D));
+    BytesWritten := fHTTP2.write(@D[1],length(D));
     sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
   end;
 
@@ -443,18 +460,18 @@ procedure TForm1.Button4Click(Sender: TObject);
 begin
   if (FD = 0) then
     exit;
-  HTTP2.TLS_Accept(FD);
+  fHTTP2.TLS_Accept(FD);
   ShowDebugMessages;
 end;
 
 procedure TForm1.EnsureHTTP2;
 begin
-  if not(assigned(HTTP2)) then
+  if not(assigned(fHTTP2)) then
   begin
-   HTTP2 := THTTP2_Connection.create;
-   HTTP2.OnRequest := @Request;
+   fHTTP2 := THTTP2_Connection.create;
+   fHTTP2.OnRequest := @Request;
    ShowDebugmessages;
-   HTTP2.CTX:= HTTP2.StrictHTTP2Context;
+   fHTTP2.CTX:= fHTTP2.StrictHTTP2Context;
    ShowDebugmessages;
   end;
 end;
@@ -471,14 +488,12 @@ end;
 
 procedure TForm1.Button7Click(Sender: TObject);
 begin
-  HTTP2.ParserClear;
-  HTTP2.Parse;
+  fHTTP2.ParserClear;
+  fHTTP2.Parse;
 end;
 
 procedure TForm1.Button8Click(Sender: TObject);
-var
- n : Integer;
- D : RawByteString;
+
 
  function StrFilter(s,Filter:string):string;
  var
@@ -490,16 +505,38 @@ var
      result := result + s[n];
  end;
 
+var
+ n,k : Integer;
+ D : RawByteString;
+ S : String;
+
 begin
  EnsureHTTP2;
 
  D := '';
  with memo3.lines do
   for n := 0 to pred(count) do
-   D := D + StrFilter(Strings[n],'0123456789ABCDEFabcdef');
+  begin
+   S := Strings[n];
 
- HTTP2.AutomataState := 1;
- HTTP2.enqueue(THPACK.HexStrToRawByteString(D));
+   k := pos('>',S);
+   if k>0 then
+    S := copy(S,succ(k),MaxInt);
+
+   k := pos('<',S);
+   if k>0 then
+    S := copy(S,succ(k),MaxInt);
+
+   D := D + StrFilter(S,'0123456789ABCDEFabcdef');
+  end;
+
+ // Auto-Detect if this is the "intitial Packet" with CLIENT_PREFIX
+ if pos('5052',D)=1 then
+  fHTTP2.AutomataState := 0
+ else
+  fHTTP2.AutomataState := 1;
+
+ fHTTP2.enqueue(THPACK.HexStrToRawByteString(D));
 
  ShowDebugMessages;
 end;
@@ -512,11 +549,11 @@ var
  BytesWritten: cint;
  n : Integer;
 begin
-  D := HTTP2.StartFrames;
+  D := fHTTP2.StartFrames;
 
   // save it as "init"
   InitPathToTest;
-  HTTP2.SaveRawBytes(D,PathToTests+'init.http2');
+  fHTTP2.SaveRawBytes(D,PathToTests+'init.http2');
 
 
   sDebug.add('--------------------------------------------');
@@ -536,9 +573,9 @@ begin
 
   sDebug.add('--------------------------------------------');
 
-  if assigned(HTTP2) then
+  if assigned(fHTTP2) then
   begin
-    BytesWritten := HTTP2.write(@D[1],length(D));
+    BytesWritten := fHTTP2.write(@D[1],length(D));
     sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
   end;
 

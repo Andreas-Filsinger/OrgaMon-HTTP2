@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 610
+  Left = 243
   Height = 1100
-  Top = 368
+  Top = 278
   Width = 1971
   Caption = 'Form1'
   ClientHeight = 1100
@@ -215,7 +215,7 @@ object Form1: TForm1
         Left = 24
         Height = 327
         Top = 60
-        Width = 1524
+        Width = 1312
         Lines.Strings = (
           '00 00 06 04 00 00 00 00 00 00 03 00 00 00 65 00'
           '00 04 08 00 00 00 00 00 00 0A 00 00'
@@ -235,10 +235,10 @@ object Form1: TForm1
         TabOrder = 15
       end
       object Button18: TButton
-        Left = 1488
+        Left = 1344
         Height = 38
-        Top = 16
-        Width = 60
+        Top = 60
+        Width = 204
         Caption = 'Clear'
         OnClick = Button18Click
         ParentFont = False
@@ -262,6 +262,24 @@ object Form1: TForm1
         Caption = 'HTTP/2 FRAME_'
         ParentColor = False
         ParentFont = False
+      end
+      object Button22: TButton
+        Left = 1344
+        Height = 38
+        Top = 101
+        Width = 204
+        Caption = 'SETTINGS_ACK'
+        OnClick = Button22Click
+        TabOrder = 18
+      end
+      object Button23: TButton
+        Left = 1344
+        Height = 38
+        Top = 144
+        Width = 204
+        Caption = 'Button23'
+        OnClick = Button23Click
+        TabOrder = 19
       end
     end
     object TabSheet1: TTabSheet
