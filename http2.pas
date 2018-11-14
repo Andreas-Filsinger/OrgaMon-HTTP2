@@ -168,9 +168,9 @@ Type
        function StartFrames: RawByteString;
        function PING(PayLoad : RawByteString; AsEcho: boolean = false):RawByteString;
        function PAGE : RawByteString;
-       function FRAME_SETTINGS_ACK : RawByteString;
-       function FRAME_SETTINGS : RawByteString;
-       function FRAME_WINDOW_UPDATE (ID:integer;
+       function r_SETTINGS_ACK : RawByteString;
+       function r_SETTINGS : RawByteString;
+       function r_WINDOW_UPDATE (ID:integer=0; Size_Increment: Integer=$7fffff) : RawByteString;
 
        // write to the Connection
        function write(buf : Pointer;  num: cint): cint; overload;
@@ -319,8 +319,12 @@ type
   PFRAME_GOAWAY = ^TFRAME_GOAWAY;
 
   // RFC: "6.9 WINDOW_UPDATE"
+
+  { TFRAME_WINDOW_UPDATE }
+
   TFRAME_WINDOW_UPDATE = packed record
    Window_Size_Increment : TNum32Bit;  // 1..2147483647
+   function asString: RawByteString;
   end;
   PFRAME_WINDOW_UPDATE = ^TFRAME_WINDOW_UPDATE;
 
@@ -472,6 +476,14 @@ begin
  delete(result,1,1);
 end;
 
+{ TFRAME_WINDOW_UPDATE }
+
+function TFRAME_WINDOW_UPDATE.asString: RawByteString;
+begin
+  setLength(result,sizeof(TFRAME_WINDOW_UPDATE));
+  move(Window_Size_Increment,result[1],sizeof(TFRAME_WINDOW_UPDATE));
+end;
+
 { TFRAME_SETTINGS }
 
 function TFRAME_SETTINGS.AsString: RawByteString;
@@ -531,8 +543,8 @@ var
 begin
   (*
  a) SETTINGS
- b) FRAME_WINDOW_UPDATE,   Stream 0  Window_Size_Increment 2147418112
- c) FRAME_SETTINGS ACK
+ b) r_WINDOW_UPDATE,   Stream 0  Window_Size_Increment 2147418112
+ c) r_SETTINGS ACK
  *)
 
  SettingsCount := 0;
@@ -629,7 +641,7 @@ SETTINGS_PUSH_ENABLED: boolean;
  move(Buf, result[1], SIZE);
 end;
 
-function THTTP2_Connection.FRAME_SETTINGS_ACK: RawByteString;
+function THTTP2_Connection.r_SETTINGS_ACK: RawByteString;
 var
  FRAME : THTTP2_FRAME;
 begin
@@ -646,7 +658,7 @@ begin
  move(FRAME, result[1], SizeOf_FRAME);
 end;
 
-function THTTP2_Connection.FRAME_SETTINGS: RawByteString;
+function THTTP2_Connection.r_SETTINGS: RawByteString;
 var
   FRAME : THTTP2_FRAME;
 
@@ -675,17 +687,33 @@ begin
    Stream_ID := 0;
  end;
 
- Settings_Data := '';
  with SETTINGS do
- begin
-   Settings_Data := Settings_Data + add(SETTINGS_TYPE_MAX_FRAME_SIZE,MAX_FRAME_SIZE);
-
-   Settings_Data := Settings_Data + add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE,INITIAL_WINDOW_SIZE);
-
-   Settings_Data := Settings_Data + add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS,MAX_CONCURRENT_STREAMS);
- end;
+  Settings_Data :=
+   {} add(SETTINGS_TYPE_MAX_FRAME_SIZE,MAX_FRAME_SIZE) +
+   {} add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE,INITIAL_WINDOW_SIZE)+
+   {} add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS,MAX_CONCURRENT_STREAMS);
 
   result := FRAME.asString + Settings_Data;
+end;
+
+function THTTP2_Connection.r_WINDOW_UPDATE(ID: integer;
+  Size_Increment: Integer): RawByteString;
+var
+ FRAME : THTTP2_FRAME;
+ FRAME_WINDOW_UPDATE : TFRAME_WINDOW_UPDATE;
+begin
+ with FRAME do
+ begin
+   Len := sizeof(TFRAME_WINDOW_UPDATE);
+   Typ := FRAME_TYPE_WINDOW_UPDATE;
+   Flags := 0;
+   Stream_ID := ID;
+ end;
+ with FRAME_WINDOW_UPDATE do
+ begin
+  Window_Size_Increment := Size_Increment;
+ end;
+ result := FRAME.asString + FRAME_WINDOW_UPDATE.asString;
 end;
 
 function THTTP2_Connection.PING(PayLoad:RawByteString; AsEcho: boolean = false):RawByteString;
