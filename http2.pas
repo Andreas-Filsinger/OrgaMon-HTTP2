@@ -56,7 +56,7 @@ Type
 
  THTTP2_Stream = Class(TObject)
        ID : Integer;   { <>0, 1.. }
-       Parent: Integer; { dads ID }
+       dependency: Integer; { dads ID }
        weight : Integer; { 1..256, default 16 }
        State : TStreamStates; { default idle }
 
@@ -871,7 +871,7 @@ begin
             for n := 0 to pred(Streams.Count) do
               if (cardinal(Stream_ID)=cardinal(THTTP2_Stream(Streams[n]).ID)) then
               begin
-               StreamFound := true;
+                StreamFound := true;
                 break;
               end;
 
@@ -882,7 +882,7 @@ begin
               with S do
               begin
                ID := cardinal(Stream_ID);
-               Parent:= cardinal(Stream_Dependency);
+               dependency:= cardinal(Stream_Dependency);
                weight := Weight;
               end;
               Streams.add(S);
