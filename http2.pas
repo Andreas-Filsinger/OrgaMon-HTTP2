@@ -155,7 +155,7 @@ Type
        constructor Create;
 
        function StrictHTTP2Context: PSSL_CTX;
-       procedure TLS_Accept(FD: cint);
+       procedure Accept(FD: cint);
 
        // Parser
        procedure Parse;
@@ -1450,7 +1450,7 @@ end;
 
 // binds a HANDLE (comes from systemd, or from incoming socket) to a new SLL Connection
 
-procedure THTTP2_Connection.TLS_Accept(FD: cint);
+procedure THTTP2_Connection.Accept(FD: cint);
 var
   a,e : cInt;
 //  ErrStr : array[0..4096] of char;

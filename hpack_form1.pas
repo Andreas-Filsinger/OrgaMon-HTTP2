@@ -33,6 +33,7 @@ type
     Button23: TButton;
     Button24: TButton;
     Button25: TButton;
+    Button26: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -76,6 +77,7 @@ type
     procedure Button23Click(Sender: TObject);
     procedure Button24Click(Sender: TObject);
     procedure Button25Click(Sender: TObject);
+    procedure Button26Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -205,7 +207,25 @@ begin
  fHTTP2.debug(fHTTP2.r_DATA(0,'It works!'));
  memo3.lines.addstrings(HTTP2.mDebug);
  mDebug.clear;
+end;
 
+procedure TForm1.Button26Click(Sender: TObject);
+var
+ H : THPACK;
+begin
+ H := THPACK.create;
+ with H do
+ begin
+  add(':status=200');
+  add('server=nginx/1.15.5');
+  add('date=Wed, 14 Nov 2018 09:18:30 GMT');
+  add('content-type=text/html; charset=UTF-8');
+ end;
+ mDebug.add(H.Date);
+ ShowDebugMessages;
+ fHTTP2.debug(H.Wire);
+ memo3.lines.addstrings(HTTP2.mDebug);
+ mDebug.clear;
 end;
 
 procedure TForm1.Button10Click(Sender: TObject);
@@ -484,7 +504,7 @@ procedure TForm1.Button4Click(Sender: TObject);
 begin
   if (FD = 0) then
     exit;
-  fHTTP2.TLS_Accept(FD);
+  fHTTP2.Accept(FD);
   ShowDebugMessages;
 end;
 

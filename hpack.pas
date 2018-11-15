@@ -33,7 +33,10 @@ unit HPACK;
 interface
 
 uses
-  Classes, SysUtils;
+   {$ifdef windows}
+   windows,
+   {$endif}
+   Classes, SysUtils;
 
 
 const
@@ -129,6 +132,7 @@ type
 
     class function HexStrToRawByteString(s:String):RawByteString;
     class function HuffmanOptionToString(H:Boolean):string;
+    class function Date:string;
  end;
 
 implementation
@@ -2406,6 +2410,38 @@ begin
    result := 'H'
   else
    result := 'S';
+end;
+
+function NowGMT: TDateTime;
+var
+  ST: TSystemTime;
+begin
+  // This Windows API function gets system time in UTC/GMT
+  // see http://msdn.microsoft.com/en-us/library/ms724390
+  GetSystemTime(ST);
+  Result := SystemTimeToDateTime(ST);
+end;
+
+
+class function THPACK.Date: string;
+
+// rfc1849 5.1.  Date
+// RFC1123
+// 'ddd, D MMM YYYY hh:mm:ss GMT'
+
+const
+ ShortDayNames : Array[1..7] of string[3] = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+ ShortMonthNames : Array[1..12] of string[3] = ( 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' );
+var
+ N : TDateTime;
+ Year, Month, Day: word;
+begin
+ N := NowGMT;
+ DecodeDate(N,Year, Month, Day);
+ result := FormatDateTime(
+  {} '"' + ShortDayNames[DayOfWeek(N)] + '", d '+
+  {} '"' + ShortMonthNames[Month] + '"' +
+  {} ' yyyy hh:nn:ss "GMT"', NowGMT);
 end;
 
 end.
