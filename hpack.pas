@@ -130,9 +130,14 @@ type
     procedure Decode; // Wire -> Header-Strings
     procedure Encode; // Header-Strings -> Wire
 
-    class function HexStrToRawByteString(s:String):RawByteString;
-    class function HuffmanOptionToString(H:Boolean):string;
-    class function Date:string;
+    function r_date : RawByteString;
+    function r_server : RawByteString;
+
+    class function HexStrToRawByteString(s:String) : RawByteString;
+    class function HuffmanOptionToString(H:Boolean) : string;
+    //
+    class function Date : string;
+    class function Server : string;
  end;
 
 implementation
@@ -2395,6 +2400,16 @@ begin
  end;
 end;
 
+function THPACK.r_date: RawByteString;
+begin
+  //
+end;
+
+function THPACK.r_server: RawByteString;
+begin
+  //
+end;
+
 class function THPACK.HexStrToRawByteString(s: String): RawByteString;
 var
   n : integer;
@@ -2422,26 +2437,33 @@ begin
   Result := SystemTimeToDateTime(ST);
 end;
 
-
 class function THPACK.Date: string;
-
-// rfc1849 5.1.  Date
-// RFC1123
+// RFC1123 / rfc1849 5.1.  Date
 // 'ddd, D MMM YYYY hh:mm:ss GMT'
-
 const
- ShortDayNames : Array[1..7] of string[3] = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
- ShortMonthNames : Array[1..12] of string[3] = ( 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' );
+ ShortDayNames : Array[1..7] of string[3] =
+   ( 'Sun','Mon','Tue','Wed','Thu','Fri','Sat' );
+ ShortMonthNames : Array[1..12] of string[3] =
+   ( 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' );
 var
  N : TDateTime;
  Year, Month, Day: word;
 begin
  N := NowGMT;
- DecodeDate(N,Year, Month, Day);
- result := FormatDateTime(
-  {} '"' + ShortDayNames[DayOfWeek(N)] + '", d '+
-  {} '"' + ShortMonthNames[Month] + '"' +
-  {} ' yyyy hh:nn:ss "GMT"', NowGMT);
+ DecodeDate(N, Year, Month, Day);
+ result :=
+  { } ShortDayNames[DayOfWeek(N)] + ', ' +
+  { } IntToStr(Day) + ' ' +
+  { } ShortMonthNames[Month] + ' ' +
+  { } IntToStr(Year) + ' ' +
+  { } FormatDateTime(
+  { } 'hh:nn:ss', N) +
+  { } ' GMT';
+end;
+
+class function THPACK.Server: string;
+begin
+  result := 'OrgaMon/9.000';
 end;
 
 end.
