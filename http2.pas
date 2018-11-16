@@ -37,7 +37,6 @@ uses
   Classes,
   SysUtils,
   unicodedata,
-  Math,
 
   // Tools
   anfix32,
@@ -66,7 +65,6 @@ Type
        class function StateToString(s:TStreamStates):string;
   end;
 
-
  THTTP2_Settings = Class(TObject)
    HEADER_TABLE_SIZE : Integer;
    ENABLE_PUSH : Integer;
@@ -76,15 +74,11 @@ Type
    MAX_HEADER_LIST_SIZE : Integer;
  end;
 
- { THTTP2_Reader - Thread }
-
-
  TNoiseContainer = array[0..pred(16*1024)] of byte;
  TNoiseContainerP = ^TNoiseContainer;
 
  TNoiseQ = specialize TPasMPBoundedQueue<RawByteString>;
  TSSL_ERRORQ = specialize TPasMPBoundedQueue<Integer>;
-
 
  THTTP2_Reader = class(TThread)
        //
@@ -588,11 +582,10 @@ SETTINGS_PUSH_ENABLED: boolean;
   SETTINGS_MAX_FRAME_SIZE := 1048576;
   add(SETTINGS_TYPE_MAX_FRAME_SIZE,SETTINGS_MAX_FRAME_SIZE);
  end;
-   }
+ MAX_HEADER_LIST_SIZE   }
 
 
  // unused
-//      SETTINGS_MAX_HEADER_LIST_SIZE: Integer;
 //      SETTINGS_PUSH_ENABLED: boolean;
 
 
@@ -685,9 +678,10 @@ begin
 
  with SETTINGS do
   Settings_Data :=
-   {} add(SETTINGS_TYPE_MAX_FRAME_SIZE,MAX_FRAME_SIZE) +
-   {} add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE,INITIAL_WINDOW_SIZE)+
-   {} add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS,MAX_CONCURRENT_STREAMS);
+   {} add(SETTINGS_TYPE_MAX_FRAME_SIZE, MAX_FRAME_SIZE) +
+   {} add(SETTINGS_TYPE_MAX_HEADER_LIST_SIZE, MAX_HEADER_LIST_SIZE) +
+   {} add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE, INITIAL_WINDOW_SIZE)+
+   {} add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS, MAX_CONCURRENT_STREAMS);
 
   result := FRAME.asString + Settings_Data;
 end;
@@ -933,6 +927,7 @@ begin
                dec(ContentSize,sizeof(TFRAME_HEADERS_PADDING));
             end;
 
+
             if (Flags and FLAG_PRIORITY=FLAG_PRIORITY) then
             begin
               with PFRAME_HEADERS_PRIORITY(@ClientNoise[CN_Pos2])^ do
@@ -947,6 +942,13 @@ begin
               end;
               inc(CN_Pos2,sizeof(TFRAME_HEADERS_PRIORITY));
               dec(ContentSize,sizeof(TFRAME_HEADERS_PRIORITY));
+            end;
+
+            if (ContentSize>SETTINGS.MAX_HEADER_LIST_SIZE) then
+            begin
+             mDebug.add('ERROR: Size of Headers>MAX_HEADER_LIST_SIZE');
+             FatalError := true;
+             break;
             end;
 
             mDebug.add(' HEADER_SIZE '+IntToStr(ContentSize));
@@ -1383,8 +1385,9 @@ begin
   with SETTINGS do
   begin
     MAX_CONCURRENT_STREAMS := 32;
-    INITIAL_WINDOW_SIZE := 65536;
-    MAX_FRAME_SIZE := 16777215;
+    INITIAL_WINDOW_SIZE := 64*1024;
+    MAX_FRAME_SIZE := 5*1024*1024;
+    MAX_HEADER_LIST_SIZE := 10*1024;
   end;
   SETTINGS_REMOTE := THTTP2_Settings.create;
 end;

@@ -71,8 +71,8 @@ type
     function O : RawByteString; // read a octet stream of given length in [Octets]
 
     // write Functions
-    procedure wBit(Bit:boolean);
-    procedure writeInt(Int:integer);
+    procedure wB(Bit:boolean);
+    procedure wI(Int:integer);
 
     // Huffman Functions
     function LiteralDecode(wire:RawByteString) : RawByteString;
@@ -417,6 +417,31 @@ begin
 
 end;
 
+procedure THPACK.wB(Bit: boolean);
+begin
+ if (BitPos=0) then
+ begin
+  iWire := iWire + #0;
+ end;
+
+ if Bit then
+  iWire[BytePos] := chr(Byte(iWire[BytePos]) and SingleBitMask[BitPos]);
+
+ inc(BitPos);
+ if (BitPos=8) then
+ begin
+  BitPos := 0;
+  inc(BytePos);
+ end;
+end;
+
+
+
+procedure THPACK.wI(Int: integer);
+begin
+
+end;
+
 function THPACK.O : RawByteString;
 begin
  result := copy(iWire,succ(BytePos),Octets);
@@ -428,15 +453,6 @@ begin
 
 end;
 
-procedure THPACK.wBit(Bit: boolean);
-begin
-
-end;
-
-procedure THPACK.writeInt(Int: integer);
-begin
-
-end;
 
 function THPACK.LiteralEncode(s: RawByteString): RawByteString;
 begin
@@ -2232,6 +2248,7 @@ begin
 
     end else
     begin
+
      // "00 ..."
      if B then
      begin
@@ -2364,26 +2381,29 @@ var
  k : INteger;
  NameString, ValueString : RawByteString;
 begin
+
+
  for n := 0 to pred(count) do
  begin
-
-  // Split
-  k := pos('=',Strings[n]);
-  if k=0 then
-  begin
-   NameString := Strings[n];
-  end else
-  begin
-   NameString := copy(Strings[n],1,pred(k));
-   ValueString := copy(Strings[n],succ(k),MaxInt);
-  end;
 
   // check if this header is in the TABLE
   TABLE_INDEX := iTABLE.indexof(Strings[n]);
 
   if (TABLE_INDEX=-1) then
   begin
-    TABLE_INDEX := nTABLE.indexof(NameString);
+   // Split
+   k := pos('=',Strings[n]);
+   if k=0 then
+   begin
+    NameString := Strings[n];
+   end else
+   begin
+    NameString := copy(Strings[n],1,pred(k));
+    ValueString := copy(Strings[n],succ(k),MaxInt);
+   end;
+
+
+   TABLE_INDEX := nTABLE.indexof(NameString);
     if (TABLE_INDEX=-1) then
     begin
       // encode NameString
@@ -2395,9 +2415,11 @@ begin
     end;
   end else
   begin
-    // Use Index iTABLE
+   wb(true);
+   wI(TABLE_INDEX);
   end;
  end;
+
 end;
 
 function THPACK.r_date: RawByteString;
@@ -2439,7 +2461,7 @@ end;
 
 class function THPACK.Date: string;
 // RFC1123 / rfc1849 5.1.  Date
-// 'ddd, D MMM YYYY hh:mm:ss GMT'
+// 'ShortDayNames, d ShortMonthNames YYYY hh:nn:ss GMT'
 const
  ShortDayNames : Array[1..7] of string[3] =
    ( 'Sun','Mon','Tue','Wed','Thu','Fri','Sat' );
@@ -2463,7 +2485,7 @@ end;
 
 class function THPACK.Server: string;
 begin
-  result := 'OrgaMon/9.000';
+  result := 'OrgaMon/9.alpha';
 end;
 
 end.

@@ -217,11 +217,11 @@ begin
  with H do
  begin
   add(':status=200');
-  add('server=nginx/1.15.5');
-  add('date=Wed, 14 Nov 2018 09:18:30 GMT');
+  add('server='+r_Server);
+  add('date='+r_date);
   add('content-type=text/html; charset=UTF-8');
+  encode;
  end;
- mDebug.add(H.Date);
  ShowDebugMessages;
  fHTTP2.debug(H.Wire);
  memo3.lines.addstrings(HTTP2.mDebug);
