@@ -283,60 +283,6 @@ RFC_7541_Appendix_B_Length : array[0..256] of byte = (
   26, 27, 26, 26, 27, 27, 27, 27, 27, 28, 27, 27, 27, 27, 27, 26,
   30);
 
-function encode_integer(i : Integer; prefix_bits: Byte):RawByteString;
-begin
- (*
- def encode_integer(integer, prefix_bits):
-     """
-     This encodes an integer according to the wacky integer encoding rules
-     defined in the HPACK spec.
-     """
-     log.debug("Encoding %d with %d bits", integer, prefix_bits)
-
-     max_number = (2 ** prefix_bits) - 1
-
-     if integer < max_number:
-         return bytearray([integer])  # Seriously?
-     else:
-         elements = [max_number]
-         integer -= max_number
-
-         while integer >= 128:
-             elements.append((integer % 128) + 128)
-             integer //= 128  # We need integer division
-
-         elements.append(integer)
-
-         return bytearray(elements)
- *)
-end;
-
-function decode_integer(data: RawByteString; prefix_bits: Byte):Integer;
-begin
-end;
-
-{ another approach is to use a automata state
-
- case automatastate of
-  0 : begin // we are unititalized, AND we read BitPos"0"
-  AutomataState := 2;
-      end;
-  1 : begin
-        BitPos"0"
-      end;
-  2 : begin
-        BitPos"1"
-      end;
-  ...
-  8 : begin
-        BitPos"8"
-        AutomataState := 1;
-      end;
- end;
-
- why do methods load "@self" again and again
-}
-
 function THPACK.B: boolean;  // inline;
 begin
 
@@ -425,7 +371,7 @@ begin
  end;
 
  if Bit then
-  iWire[BytePos] := chr(Byte(iWire[BytePos]) and SingleBitMask[BitPos]);
+  iWire[BytePos] := chr(ord(iWire[BytePos]) and SingleBitMask[BitPos]);
 
  inc(BitPos);
  if (BitPos=8) then
@@ -435,10 +381,83 @@ begin
  end;
 end;
 
-
-
-procedure THPACK.wI(Int: integer);
+procedure THPACK.wI(I: integer);
+var
+ HaveBits : Integer;
+ ValueIfAllTheBitsUsed : Integer;
 begin
+ HaveBits := 8 - BitPos;
+ ValueIfAllTheBitsUsed := IntegerPrefixMask[HaveBits];
+
+ if (I<=ValueIfAllTheBitsUsed) then
+ begin
+  iWire[BytePos] := chr(Byte(iWire[BytePos]) or Byte(I));
+  inc(BytePos];
+  BitPos := 0;
+  exit;
+ end;
+
+ iWire[BytePos] := chr(Byte(iWire[BytePos]) or ValueIfAllTheBitsUsed);
+ inc(BytePos];
+ BitPos := 0;
+ dec(I,ValueIfAllTheBitsUsed);
+
+ HaveBits := 7;
+ ValueIfAllTheBitsUsed := IntegerPrefixMask[HaveBits];
+ repeat
+  wB(true);
+  if I<=
+          I := I div 128;
+ until ();
+
+ //
+ HaveBits := 7;
+ ValueIfAllTheBitsUsed := IntegerPrefixMask[HaveBits];
+
+
+
+end;
+
+ (*
+ def encode_integer(integer, prefix_bits):
+     """
+     This encodes an integer according to the wacky integer encoding rules
+     defined in the HPACK spec.
+     """
+     log.debug("Encoding %d with %d bits", integer, prefix_bits)
+
+     max_number = (2 ** prefix_bits) - 1
+
+     if integer < max_number:
+         return bytearray([integer])  # Seriously?
+     else:
+         elements = [max_number]
+         integer -= max_number
+
+         while integer >= 128:
+             elements.append((integer % 128) + 128)
+             integer //= 128  # We need integer division
+
+         elements.append(integer)
+
+         return bytearray(elements)
+         ----------------------------------------
+         void encode_integer(uint8_t hibits, uint8_t numbits, uint32_t value, std::vector<uint8_t>& output) {
+  uint8_t max = (1U << numbits) - 1;
+  if (value < max) {
+    output.push_back(value | hibits);
+    return;
+  }
+  output.push_back(max | hibits);
+  value -= max;
+  while (value >= 0x80) {
+    output.push_back(0x80 | (value & 0x7f));
+    value >>= 7;
+  }
+  output.push_back(value);
+}
+
+         *)
 
 end;
 
@@ -2402,19 +2421,19 @@ begin
     ValueString := copy(Strings[n],succ(k),MaxInt);
    end;
 
-
    TABLE_INDEX := nTABLE.indexof(NameString);
-    if (TABLE_INDEX=-1) then
-    begin
+   if (TABLE_INDEX=-1) then
+   begin
       // encode NameString
       // encode ValueString
-    end else
-    begin
+   end else
+   begin
       // Use Index nTABLE
       // encode ValueString
-    end;
+   end;
   end else
   begin
+   // full hit
    wb(true);
    wI(TABLE_INDEX);
   end;
