@@ -131,8 +131,6 @@ type
     procedure Decode; // Wire -> Header-Strings
     procedure Encode; // Header-Strings -> Wire
 
-    function r_date : RawByteString;
-    function r_server : RawByteString;
 
     class function HexStrToRawByteString(s:String) : RawByteString;
     class function HuffmanOptionToString(H:Boolean) : string;
@@ -220,14 +218,14 @@ const
  DYN_TABLE_ELEMENT_ADD_SIZE = 32;
 
  SingleBitMask : array[0..7] of Byte = (
-   {} %10000000,
-   {} %01000000,
-   {} %00100000,
-   {} %00010000,
-   {} %00001000,
-   {} %00000100,
-   {} %00000010,
-   {} %00000001);
+   { 0 } %10000000,
+   { 1 } %01000000,
+   { 2 } %00100000,
+   { 3 } %00010000,
+   { 4 } %00001000,
+   { 5 } %00000100,
+   { 6 } %00000010,
+   { 7 } %00000001);
 
  IntegerPrefixMask : array[4..7] of Byte = (
   {} %00001111,
@@ -361,7 +359,7 @@ begin
 
   until false;
  end;
-
+ mDebug.add('L '+IntToStr(result));
 end;
 procedure THPACK.wI(Int: integer);
 var
@@ -410,13 +408,17 @@ begin
  wB(false); // EOF-Marker
  iWire[BytePos] := chr(Int);
  inc(BytePos);
- BitPos := 0;
+
 end;
 
 procedure THPACK.wO(R: RawByteString);
+var
+ L : Integer;
 begin
-  wI(length(R));
+  L := length(R);
+  wI(L);
   iWire := iWire + R;
+  inc(BytePos, L);
 end;
 
 procedure THPACK.wH(R: RawByteString);
@@ -427,25 +429,23 @@ end;
 procedure THPACK.wB(Bit: boolean);
 begin
  if (BitPos=0) then
- begin
   iWire := iWire + #0;
- end;
 
  if Bit then
-  iWire[BytePos] := chr(ord(iWire[BytePos]) and SingleBitMask[BitPos]);
+  iWire[BytePos] := chr(ord(iWire[BytePos]) or SingleBitMask[BitPos]);
 
  inc(BitPos);
  if (BitPos=8) then
  begin
-  BitPos := 0;
   inc(BytePos);
+  BitPos := 0;
  end;
 end;
 
 procedure THPACK.wB(Bit: Byte);
 begin
-  if Bit=0 then
-   wB(false)
+  if (Bit=0) then
+    wB(false)
   else
     wB(True);
 end;
@@ -453,7 +453,7 @@ end;
 function THPACK.O : RawByteString;
 begin
  result := copy(iWire,succ(BytePos),Octets);
- inc(BytePos,Octets);
+ inc(BytePos, Octets);
 end;
 
 function THPACK.getWire: RawByteString;
@@ -2477,16 +2477,6 @@ begin
 
 end;
 
-function THPACK.r_date: RawByteString;
-begin
-  //
-end;
-
-function THPACK.r_server: RawByteString;
-begin
-  //
-end;
-
 class function THPACK.HexStrToRawByteString(s: String): RawByteString;
 var
   n : integer;
@@ -2518,9 +2508,9 @@ class function THPACK.Date: string;
 // RFC1123 / rfc1849 5.1.  Date
 // 'ShortDayNames, d ShortMonthNames YYYY hh:nn:ss GMT'
 const
- ShortDayNames : Array[1..7] of string[3] =
+ ShortDayNames : Array[1..7] of string =
    ( 'Sun','Mon','Tue','Wed','Thu','Fri','Sat' );
- ShortMonthNames : Array[1..12] of string[3] =
+ ShortMonthNames : Array[1..12] of string =
    ( 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' );
 var
  N : TDateTime;

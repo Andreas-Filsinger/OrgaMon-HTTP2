@@ -126,7 +126,8 @@ Type
      FRequest : TRequestMethod;
 
      // Data-Objects
-     Headers: THPACK;
+     HEADERS_OUT: THPACK;
+     HEADERS_IN: THPACK;
      Streams: TList;
      SETTINGS : THTTP2_Settings;
      SETTINGS_REMOTE : THTTP2_Settings;
@@ -821,7 +822,7 @@ begin
  FSize := FileSize(F);
  R := 0;
  blockread(F,ClientNoise,min(FSize,SizeOf(ClientNoise)),R);
- CloseFIle(F);
+ CloseFile(F);
  CN_Pos := 0;
  CN_Size := R;
 end;
@@ -961,17 +962,17 @@ begin
 
             // Auto-Create the Headers, if Client has no special
             // requirements for the MAXIMUM_TABLE_SIZE
-            if not(assigned(Headers)) then
-             Headers := THPACK.Create;
+            if not(assigned(HEADERS_IN)) then
+             HEADERS_IN := THPACK.Create;
 
             setLength(H,ContentSize);
             move(ClientNoise[CN_Pos2],H[1],ContentSize);
-            with Headers do
+            with HEADERS_IN do
             begin
              Wire := H;
              Decode;
             end;
-            mDebug.addStrings(Headers.DebugStrings);
+            mDebug.addStrings(HEADERS_IN.DebugStrings);
 
            end;
           FRAME_TYPE_PRIORITY : begin;
@@ -1046,10 +1047,10 @@ begin
                         HEADER_TABLE_SIZE := Cardinal(Value);
 
                         // Auto-Create the HPACK-Headers
-                        if assigned(Headers) then
-                         Headers.set_MAXIMUM_TABLE_SIZE(HEADER_TABLE_SIZE)
+                        if assigned(HEADERS_IN) then
+                         HEADERS_IN.set_MAXIMUM_TABLE_SIZE(HEADER_TABLE_SIZE)
                         else
-                         Headers := THPACK.Create(HEADER_TABLE_SIZE);
+                         HEADERS_IN := THPACK.Create(HEADER_TABLE_SIZE);
 
                       end;
                       SETTINGS_TYPE_MAX_CONCURRENT_STREAMS :begin

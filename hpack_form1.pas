@@ -87,6 +87,7 @@ type
     procedure Button8Click(Sender: TObject);
     procedure Button9Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure Memo4Change(Sender: TObject);
     procedure TabSheet1ContextPopup(Sender: TObject; MousePos: TPoint;
       var Handled: Boolean);
     procedure TabSheet2ContextPopup(Sender: TObject; MousePos: TPoint;
@@ -213,17 +214,17 @@ procedure TForm1.Button26Click(Sender: TObject);
 var
  H : THPACK;
 begin
- H := THPACK.create;
- with H do
+ fHTTP2.HEADERS_OUT := THPACK.create;
+ with fHTTP2.HEADERS_OUT do
  begin
   add(':status=200');
-  add('server='+r_Server);
-  add('date='+r_date);
+  add('server=' + Server);
+  add('date=' + date);
   add('content-type=text/html; charset=UTF-8');
   encode;
  end;
  ShowDebugMessages;
- fHTTP2.debug(H.Wire);
+ fHTTP2.debug(fHTTP2.HEADERS_OUT.Wire);
  memo3.lines.addstrings(HTTP2.mDebug);
  mDebug.clear;
 end;
@@ -629,6 +630,11 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   PageControl1.ActivePage := TabSheet2;
+end;
+
+procedure TForm1.Memo4Change(Sender: TObject);
+begin
+
 end;
 
 procedure TForm1.TabSheet1ContextPopup(Sender: TObject; MousePos: TPoint;
