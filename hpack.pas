@@ -54,9 +54,12 @@ type
     iTABLE : TStringList;
     nTABLE : TStringList; // clone of iTABLE but no value-Part
 
+    notIndexed : TStringList; // Header-Names, where "caching" of the values makes no sense
+    neverIndexed : TStringList; // Header-Names, where "caching" / "storing" and "modifiy" is forbidden
+
     mDebug : TStringList; // Internal Infos
 
-    // a number of octets, representing the HPACK-encoded data of a HEADERS FRAME
+    // a number of octets, representing the HPACK-encoded part of a HEADERS FRAME
     iWIRE : RawByteString;
 
     // read/write Position of the decoder/encoder on iWIRE
@@ -71,17 +74,15 @@ type
     function O : RawByteString; // read a octet stream of given length in [Octets]
 
     // write Functions
-    procedure wB(Bit:boolean);
-    procedure wI(Int:integer);
-
-    // Huffman Functions
-    function LiteralDecode(wire:RawByteString) : RawByteString;
-    function LiteralEncode(s:RawByteString):RawByteString;
+    procedure wB(Bit:boolean); overload; // write one Bit
+    procedure wB(Bit:Byte); overload; // write one Bit
+    procedure wI(Int:integer); // write one Integer
+    procedure wO(R:RawByteString); // write a Literal
+    procedure wH(R:RawByteString); // write a Huffman-encoded Literal
 
     // Wire - Stream coming from the wire
     function getWire : RawByteString;
     procedure setWire(wire: RawByteString);
-
 
     ///////////
     // TABLE //
@@ -362,6 +363,66 @@ begin
  end;
 
 end;
+procedure THPACK.wI(Int: integer);
+var
+ N : Integer; // We have N Bits to store the Value
+ ValueIfAllTheBitsUsed : Integer; // this value is a marker for "more to come"
+begin
+ // RFC 5.1.  Integer Representation
+ N := 8 - BitPos;
+ ValueIfAllTheBitsUsed := IntegerPrefixMask[N];
+
+ // if I < 2^N - 1, encode I on N bits
+ if (Int<ValueIfAllTheBitsUsed) then
+ begin
+  iWire[BytePos] := chr(Byte(iWire[BytePos]) or Byte(Int));
+  inc(BytePos);
+  BitPos := 0;
+  exit;
+ end;
+
+ // encode (2^N - 1) on N bits
+ iWire[BytePos] := chr(Byte(iWire[BytePos]) or ValueIfAllTheBitsUsed);
+ inc(BytePos);
+ BitPos := 0;
+
+ // I = I - (2^N - 1)
+ dec(Int,ValueIfAllTheBitsUsed);
+
+ // Now, we have even more space: 7 Bits
+ N := 7;
+ ValueIfAllTheBitsUsed := IntegerPrefixMask[N];
+
+ // while I >= 128
+ while (Int>=128) do
+ begin
+
+   // encode (I % 128 + 128) on 8 bits
+   wB(true);
+   iWire[BytePos] := chr(Byte(iWire[BytePos]) or (Int mod 128));
+   inc(BytePos);
+
+   // I = I / 128
+   Int := Int div 128;
+ end;
+
+ // encode I on 8 bits
+ wB(false); // EOF-Marker
+ iWire[BytePos] := chr(Int);
+ inc(BytePos);
+ BitPos := 0;
+end;
+
+procedure THPACK.wO(R: RawByteString);
+begin
+  wI(length(R));
+  iWire := iWire + R;
+end;
+
+procedure THPACK.wH(R: RawByteString);
+begin
+ // ERROR: not implemented right now
+end;
 
 procedure THPACK.wB(Bit: boolean);
 begin
@@ -381,101 +442,18 @@ begin
  end;
 end;
 
-procedure THPACK.wI(I: integer);
-var
- HaveBits : Integer;
- ValueIfAllTheBitsUsed : Integer;
+procedure THPACK.wB(Bit: Byte);
 begin
- HaveBits := 8 - BitPos;
- ValueIfAllTheBitsUsed := IntegerPrefixMask[HaveBits];
-
- if (I<=ValueIfAllTheBitsUsed) then
- begin
-  iWire[BytePos] := chr(Byte(iWire[BytePos]) or Byte(I));
-  inc(BytePos];
-  BitPos := 0;
-  exit;
- end;
-
- iWire[BytePos] := chr(Byte(iWire[BytePos]) or ValueIfAllTheBitsUsed);
- inc(BytePos];
- BitPos := 0;
- dec(I,ValueIfAllTheBitsUsed);
-
- HaveBits := 7;
- ValueIfAllTheBitsUsed := IntegerPrefixMask[HaveBits];
- repeat
-  wB(true);
-  if I<=
-          I := I div 128;
- until ();
-
- //
- HaveBits := 7;
- ValueIfAllTheBitsUsed := IntegerPrefixMask[HaveBits];
-
-
-
-end;
-
- (*
- def encode_integer(integer, prefix_bits):
-     """
-     This encodes an integer according to the wacky integer encoding rules
-     defined in the HPACK spec.
-     """
-     log.debug("Encoding %d with %d bits", integer, prefix_bits)
-
-     max_number = (2 ** prefix_bits) - 1
-
-     if integer < max_number:
-         return bytearray([integer])  # Seriously?
-     else:
-         elements = [max_number]
-         integer -= max_number
-
-         while integer >= 128:
-             elements.append((integer % 128) + 128)
-             integer //= 128  # We need integer division
-
-         elements.append(integer)
-
-         return bytearray(elements)
-         ----------------------------------------
-         void encode_integer(uint8_t hibits, uint8_t numbits, uint32_t value, std::vector<uint8_t>& output) {
-  uint8_t max = (1U << numbits) - 1;
-  if (value < max) {
-    output.push_back(value | hibits);
-    return;
-  }
-  output.push_back(max | hibits);
-  value -= max;
-  while (value >= 0x80) {
-    output.push_back(0x80 | (value & 0x7f));
-    value >>= 7;
-  }
-  output.push_back(value);
-}
-
-         *)
-
+  if Bit=0 then
+   wB(false)
+  else
+    wB(True);
 end;
 
 function THPACK.O : RawByteString;
 begin
  result := copy(iWire,succ(BytePos),Octets);
  inc(BytePos,Octets);
-end;
-
-function THPACK.LiteralDecode(wire: RawByteString): RawByteString;
-begin
-
-end;
-
-
-function THPACK.LiteralEncode(s: RawByteString): RawByteString;
-begin
-
 end;
 
 function THPACK.getWire: RawByteString;
@@ -572,6 +550,26 @@ begin
   iTABLE := TStringList.Create;
   nTABLE := TStringList.Create;
   mDebug := TStringList.Create;
+
+  notIndexed := TStringList.Create;
+  with notIndexed do
+  begin
+   add('date');
+   add('etag');
+   add('content-md5');
+   // more to come
+   // set-cookie? Oder ist es sogar sicherer wenn es nur einmal gesendet wird
+   // uns sich ab dann in der Tabelle befindet
+  end;
+
+  neverIndexed := TStringList.Create;
+  with neverIndexed do
+  begin
+   add('authorization');
+   add('content-range');
+   // more to come
+  end;
+
   for n := low(STATIC_TABLE) to high(STATIC_TABLE) do
    incTABLE(STATIC_TABLE[n]);
 
@@ -2397,10 +2395,15 @@ procedure THPACK.Encode;
 var
  n : integer;
  TABLE_INDEX : Integer;
- k : INteger;
+ k : Integer;
  NameString, ValueString : RawByteString;
-begin
 
+ Without_Index, Never_Index : boolean;
+
+begin
+ iWire := '';
+ BytePos := 1;
+ BitPos := 0;
 
  for n := 0 to pred(count) do
  begin
@@ -2410,31 +2413,64 @@ begin
 
   if (TABLE_INDEX=-1) then
   begin
+   // we have to encode the value at least
+
    // Split
    k := pos('=',Strings[n]);
-   if k=0 then
+   if (k=0) then
    begin
     NameString := Strings[n];
+    // ERROR: This makes no sense, having just "name"
    end else
    begin
     NameString := copy(Strings[n],1,pred(k));
     ValueString := copy(Strings[n],succ(k),MaxInt);
    end;
 
+   // check a pure "Name" Hit
    TABLE_INDEX := nTABLE.indexof(NameString);
-   if (TABLE_INDEX=-1) then
+
+   Without_Index := notIndexed.indexof(NameString)<>-1;
+   Never_Index := neverIndexed.indexof(NameString)<>-1;
+
+   if (Never_Index) then
+     Without_Index := true;
+
+   if not(Without_Index) then
    begin
-      // encode NameString
-      // encode ValueString
+    // 6.2.1.  Literal Header Field with Incremental Indexing
+    wB(0); wB(1);  { PreFix }
    end else
    begin
-      // Use Index nTABLE
-      // encode ValueString
+    if not(Never_Index) then
+    begin
+     // 6.2.2.  Literal Header Field without Indexing
+     wB(0); wB(0); wB(0); wB(0);  { PreFix }
+    end else
+    begin
+     // 6.2.3.  Literal Header Field Never Indexed
+     wB(0); wB(0); wB(0); wB(1); { PreFix }
+    end;
+   end;
+
+   if (TABLE_INDEX=-1) then
+   begin
+    // encode NameString
+    wb(0); wO(NameString);
+
+    // encode ValueString
+    wb(0); wO(ValueString);
+   end else
+   begin
+     // request Table for "name"
+     wI(TABLE_INDEX);
+     // encode Value
+     wb(0); wO(ValueString);
    end;
   end else
   begin
    // full hit
-   wb(true);
+   wb(1); { Prefix }
    wI(TABLE_INDEX);
   end;
  end;
