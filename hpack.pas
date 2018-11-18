@@ -77,8 +77,8 @@ type
     procedure wB(Bit:boolean); overload; // write one Bit
     procedure wB(Bit:Byte); overload; // write one Bit
     procedure wI(Int:integer); // write one Integer
-    procedure wO(R:RawByteString); // write a Literal
-    procedure wH(R:RawByteString); // write a Huffman-encoded Literal
+    procedure wO(L:String); // write a Literal
+    procedure wH(L:String); // write a Huffman-encoded Literal
 
     // Wire - Stream coming from the wire
     function getWire : RawByteString;
@@ -411,17 +411,17 @@ begin
 
 end;
 
-procedure THPACK.wO(R: RawByteString);
+procedure THPACK.wO(L: String);
 var
- L : Integer;
+ Len : Integer;
 begin
-  L := length(R);
-  wI(L);
-  iWire := iWire + R;
-  inc(BytePos, L);
+  Len := length(L);
+  wI(Len);
+  iWire := iWire + L;
+  inc(BytePos, Len);
 end;
 
-procedure THPACK.wH(R: RawByteString);
+procedure THPACK.wH(L: String);
 begin
  // ERROR: not implemented right now
 end;
