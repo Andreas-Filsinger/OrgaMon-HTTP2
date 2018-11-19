@@ -627,22 +627,25 @@ begin
  ShowDebugMessages;
 end;
 
+const
+   AutoMataState : Integer = 0;
+
 procedure TForm1.Button9Click(Sender: TObject);
+var
+  R : RawByteString;
 begin
  with fHTTP2 do
  begin
-  write(
-   {} r_SETTINGS +
-   {} r_WINDOW_UPDATE(0,121212)+
-   {} r_SETTINGS_ACK
-  );
+  case AutoMataState of
+  0 : R := r_SETTINGS_ACK;
+  1 : R := r_SETTINGS;
+  2 : R := r_WINDOW_UPDATE(0,121212);
+  3 : R := r_HEADER(15);
+  4 : R := r_DATA(15,NULL_PAGE);
+  end;
+  write(R);
   ShowDebugMessages;
-
-  write(
-   {} r_HEADER(15) +
-   {} r_DATA(15,NULL_PAGE)
-  );
-  ShowDebugMessages;
+  inc(AutoMataState);
  end;
 end;
 
