@@ -128,9 +128,12 @@ Type
      // Data-Objects
      HEADERS_OUT: THPACK;
      HEADERS_IN: THPACK;
-     Streams: TList;
      SETTINGS : THTTP2_Settings;
      SETTINGS_REMOTE : THTTP2_Settings;
+
+     // Streams
+     Streams: TList;
+     LAST_STREAM_ID : Integer;
 
      // openSSL
      CTX: PSSL_CTX;
@@ -152,6 +155,9 @@ Type
        function StrictHTTP2Context: PSSL_CTX;
        procedure Accept(FD: cint);
 
+       // Streams
+       function byID (ID:Integer): THTTP2_Stream;
+
        // Parser
        procedure Parse;
        procedure ParserClear;
@@ -159,14 +165,12 @@ Type
        procedure SaveRawBytes(B: RawByteString; FName: string);
        procedure LoadRawBytes(FName: string);
 
-       // Frames
-       function StartFrames: RawByteString;
-       function PING(PayLoad : RawByteString; AsEcho: boolean = false):RawByteString;
-       function PAGE : RawByteString;
+       // FRAMES
+       function r_PING(PayLoad : RawByteString; AsEcho: boolean = false) : RawByteString;
        function r_SETTINGS_ACK : RawByteString;
        function r_SETTINGS : RawByteString;
        function r_WINDOW_UPDATE (ID:integer=0; Size_Increment: Integer=$7fffff) : RawByteString;
-       function r_HEADER (ID:Integer; H:THPACK) : RawByteString;
+       function r_HEADER (ID:Integer) : RawByteString;
        function r_DATA (ID:Integer; Content: RawByteString) : RawByteString;
 
        // write to the Connection
@@ -185,6 +189,8 @@ Type
        procedure loadERROR(Err : cint);
 
        property OnRequest : TrequestMethod read FRequest write FRequest;
+
+       class function NULL_PAGE : RawByteString;
  end;
 
 
@@ -365,6 +371,19 @@ const
  CLIENT_PREFIX_PRISM = 'PRISM' + CRLF+CRLF;
  CLIENT_PREFIX_HTTP = ' * HTTP/2.0' + CRLF+CRLF;
  SizeOf_CLIENT_PREFIX = length(CLIENT_PREFIX_PRISM)+length(CLIENT_PREFIX_HTTP);
+ EMPTY_PAGE =
+   {} '<!doctype html>' + CRLF +
+   {} '<html lang=en>' + CRLF +
+   {} ' <head>' + CRLF +
+   {} '  <meta charset=utf-8>' + CRLF +
+   {} '  <title>OrgaMon</title>' + CRLF +
+   {} ' </head>' + CRLF +
+   {} ' <body>OrgaMon-HTTP2 works!</body>' + CRLF +
+   {} '</html>' + CRLF +
+   {} CRLF +
+   {} CRLF;
+
+
 
  // Frame Types
  FRAME_TYPE_DATA = 0;
@@ -506,130 +525,11 @@ begin
  result := STATE_NAMES[s];
 end;
 
-// RFC: 3.5.  HTTP/2 Connection Preface
-
-function THTTP2_Connection.StartFrames: RawByteString;
-var
- Buf: TNoiseContainer;
- PBuf, _PBuf: ^Byte;
- FRAME : THTTP2_FRAME;
- WINDOW_UPDATE: TFRAME_WINDOW_UPDATE;
- SettingsCount: Integer;
- SIZE: Integer;
-
- procedure add(pSETTING_ID : UInt16;pValue : UInt32);
- var
-  SETTING : TFRAME_SETTINGS;
- begin
-   with SETTING do
-   begin
-     SETTING_ID := pSETTING_ID;
-     Value      := pValue;
-   end;
-   move(SETTING,PBuf^,SizeOf_SETTINGS);
-   inc(PBuf,SizeOf_SETTINGS);
-   inc(SettingsCount);
- end;
-
-begin
   (*
  a) SETTINGS
  b) r_WINDOW_UPDATE,   Stream 0  Window_Size_Increment 2147418112
  c) r_SETTINGS ACK
  *)
-
- SettingsCount := 0;
-
- // A) SETTINGS - FRAME
-
- PBuf := @Buf;
- inc(PBuf,SizeOf_FRAME);
-
- // typical "incoming" SETTING FRAME
-// HEADER_TABLE_SIZE=65536
-// INITIAL_WINDOW_SIZE=131072
-// MAX_FRAME_SIZE=16384
-
-  {
-  // Connection Settings
-SETTINGS_MAX_CONCURRENT_STREAMS_LOCAL : Integer;
-SETTINGS_MAX_CONCURRENT_STREAMS_REMOTE: Integer;
-SETTINGS_HEADER_TABLE_SIZE: Integer;
-SETTINGS_INITIAL_WINDOW_SIZE: Integer;
-SETTINGS_MAX_FRAME_SIZE: Integer;
-SETTINGS_MAX_HEADER_LIST_SIZE: Integer;
-SETTINGS_PUSH_ENABLED: boolean;
-
- if (SETTINGS_HEADER_TABLE_SIZE=0) then
- begin
-  SETTINGS_HEADER_TABLE_SIZE := 4096;
-  add(SETTINGS_TYPE_HEADER_TABLE_SIZE,SETTINGS_HEADER_TABLE_SIZE);
- end;
-
- if (SETTINGS_MAX_CONCURRENT_STREAMS_LOCAL=0) then
- begin
-  SETTINGS_MAX_CONCURRENT_STREAMS_LOCAL := 101;
-  add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS,SETTINGS_MAX_CONCURRENT_STREAMS_LOCAL);
- end;
-
- if (SETTINGS_INITIAL_WINDOW_SIZE=0) then
- begin
-  SETTINGS_INITIAL_WINDOW_SIZE := 65535;
-  add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE,SETTINGS_INITIAL_WINDOW_SIZE);
- end;
-
- if (SETTINGS_MAX_FRAME_SIZE=0) then
- begin
-  SETTINGS_MAX_FRAME_SIZE := 1048576;
-  add(SETTINGS_TYPE_MAX_FRAME_SIZE,SETTINGS_MAX_FRAME_SIZE);
- end;
- MAX_HEADER_LIST_SIZE   }
-
-
- // unused
-//      SETTINGS_PUSH_ENABLED: boolean;
-
-
- _PBuf := PBuf;
- with FRAME do
- begin
-   Len := SettingsCount*SizeOf_SETTINGS;
-   Typ := FRAME_TYPE_SETTINGS;
-   Flags := 0;
-   Stream_ID := 0;
- end;
-
- // Reset Pointer to the start ...
- PBuf := @Buf;
- // ... and write HEADER
- move(FRAME,PBuf^,SizeOf_FRAME);
-
- SIZE := Sizeof_FRAME + Cardinal(FRAME.Len);
-
- // B) WINDOW_UPDATE FRAME
- with FRAME do
- begin
-   Len := SizeOf_WINDOW_UPDATE;
-   Typ := FRAME_TYPE_WINDOW_UPDATE;
-   Flags := 0;
-   Stream_ID := 0;
- end;
- PBuf := _PBuf;
- move(FRAME,PBuf^,SizeOf_FRAME);
- inc(PBuf,SizeOf_FRAME);
-
- with WINDOW_UPDATE do
- begin
-   Window_Size_Increment := 655360;
- end;
- move(WINDOW_UPDATE,PBuf^,SizeOf_WINDOW_UPDATE);
-
- inc(SIZE, SizeOf_FRAME + SizeOf_WINDOW_UPDATE);
-
- // Return the Structure
- SetLength(result, SIZE);
- move(Buf, result[1], SIZE);
-end;
 
 function THTTP2_Connection.r_SETTINGS_ACK: RawByteString;
 var
@@ -707,20 +607,18 @@ begin
  result := FRAME.asString + FRAME_WINDOW_UPDATE.asString;
 end;
 
-function THTTP2_Connection.r_HEADER(ID: Integer; H: THPACK): RawByteString;
+function THTTP2_Connection.r_HEADER(ID: Integer): RawByteString;
 var
  FRAME: THTTP2_FRAME;
- HeadersRaw: RawByteString;
 begin
- HeadersRaw := H.Wire;
  with FRAME do
  begin
-   Len := length(HeadersRaw);
+   Len := length(HEADERS_OUT.wire);
    Typ := FRAME_TYPE_HEADERS;
    Flags := FLAG_END_HEADERS;
    Stream_ID := ID;
  end;
- result := FRAME.asString + HeadersRaw;
+ result := FRAME.asString + HEADERS_OUT.wire;
 end;
 
 function THTTP2_Connection.r_DATA(ID: Integer; Content: RawByteString
@@ -738,7 +636,7 @@ begin
  result := FRAME.asString + Content;
 end;
 
-function THTTP2_Connection.PING(PayLoad:RawByteString; AsEcho: boolean = false):RawByteString;
+function THTTP2_Connection.r_PING(PayLoad:RawByteString; AsEcho: boolean = false):RawByteString;
 var
   Buf: array[0..pred(16*1024)] of byte;
   PBuf: ^Byte;
@@ -750,7 +648,7 @@ begin
  with FRAME do
  begin
    Len := 8;
-    Typ := FRAME_TYPE_PING;
+   Typ := FRAME_TYPE_PING;
    if AsEcho then
     Flags := FLAG_ACK
    else
@@ -762,7 +660,7 @@ begin
  move(FRAME,PBuf^,SizeOf_FRAME);
  inc(PBuf,SizeOf_FRAME);
 
- // PING Playload (Echo!)
+ // r_PING Playload (Echo!)
  if (length(PayLoad)=8) then
   move(PayLoad[1],PBuf^,8);
  inc(SIZE,8);
@@ -770,19 +668,6 @@ begin
  // Return the Structure
  SetLength(result, SIZE);
  move(Buf, result[1], SIZE);
-end;
-
-function THTTP2_Connection.PAGE: RawByteString;
-begin
-
- // Headers.add - no action because this all is default!
- // { 08 } ':status=200',
- // { 26 } 'content-encoding',
- // { 31 } 'content-type',
-
- // Data.add
- result := '<html><body><h1>'+PING_PAYLOAD+'</h1></body></html>';
-
 end;
 
 const
@@ -960,11 +845,6 @@ begin
               H := H + IntToHex(ClientNoise[CN_Pos2+n],2);
             mDebug.add(' HEADER '+ H);
 
-            // Auto-Create the Headers, if Client has no special
-            // requirements for the MAXIMUM_TABLE_SIZE
-            if not(assigned(HEADERS_IN)) then
-             HEADERS_IN := THPACK.Create;
-
             setLength(H,ContentSize);
             move(ClientNoise[CN_Pos2],H[1],ContentSize);
             with HEADERS_IN do
@@ -1046,11 +926,7 @@ begin
                        SETTINGS_TYPE_HEADER_TABLE_SIZE:begin
                         HEADER_TABLE_SIZE := Cardinal(Value);
 
-                        // Auto-Create the HPACK-Headers
-                        if assigned(HEADERS_IN) then
-                         HEADERS_IN.set_MAXIMUM_TABLE_SIZE(HEADER_TABLE_SIZE)
-                        else
-                         HEADERS_IN := THPACK.Create(HEADER_TABLE_SIZE);
+                        HEADERS_IN.set_MAXIMUM_TABLE_SIZE(HEADER_TABLE_SIZE)
 
                       end;
                       SETTINGS_TYPE_MAX_CONCURRENT_STREAMS :begin
@@ -1152,7 +1028,23 @@ begin
                break;
              end;
 
-             mDebug.add(' Window_Size_Increment ' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
+            // Search for the Stream
+            if (cardinal(Stream_ID)<=LAST_STREAM_ID) then
+            begin
+             S := byID(cardinal(Stream_ID));
+              if not(assigned(S)) then
+              begin
+                 // auto-create
+                 S := THTTP2_Stream.Create;
+                 with S do
+                  ID := cardinal(Stream_ID);
+              end;
+              mDebug.add(' Window_Size_Increment ' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
+              inc (S.window_size,Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment) );
+            end else
+            begin
+              mDebug.add('Noise on Stream '+IntToStr(cardinal(Stream_ID))+' is ignored');
+            end;
 
             end;
           FRAME_TYPE_CONTINUATION : begin
@@ -1381,7 +1273,12 @@ end;
 constructor THTTP2_Connection.Create;
 begin
   inherited Create;
+
+  // Streams
   Streams:= TList.create;
+  LAST_STREAM_ID := 2147483647;
+
+  // Settings
   SETTINGS := THTTP2_Settings.create;
   with SETTINGS do
   begin
@@ -1391,6 +1288,11 @@ begin
     MAX_HEADER_LIST_SIZE := 10*1024;
   end;
   SETTINGS_REMOTE := THTTP2_Settings.create;
+
+  // Headers
+  HEADERS_OUT := THPACK.create;
+  HEADERS_IN := THPACK.create;
+
 end;
 
 function THTTP2_Connection.StrictHTTP2Context: PSSL_CTX;
@@ -1588,6 +1490,19 @@ begin
   end;
 end;
 
+function THTTP2_Connection.byID(ID: Integer): THTTP2_Stream;
+var
+ n : integer;
+begin
+ result := nil;
+ for n := 0 to pred(Streams.Count) do
+   if (cardinal(ID)=cardinal(THTTP2_Stream(Streams[n]).ID)) then
+   begin
+     result := THTTP2_Stream(Streams[n]);
+     break;
+   end;
+end;
+
 function THTTP2_Connection.write(buf: Pointer; num: cint): cint; overload;
 begin
  result := SSL_write(SSL,@buf,num);
@@ -1661,12 +1576,15 @@ begin
    mDebug.add('We have a Update of SSL_ERROR Code! New Value is '+SSL_ERROR_NAME[I]);
 end;
 
-
 procedure THTTP2_Connection.loadERROR(Err: cint);
 begin
  sDebug.add(SSL_ERROR_NAME[SSL_get_error(SSL,Err)]);
-
  ERR_print_errors_cb(@cb_ERROR,nil);
+end;
+
+class function THTTP2_Connection.NULL_PAGE: RawByteString;
+begin
+  result := EMPTY_PAGE;
 end;
 
 // Im Rang 1: socket von systemd erhalten: // http://0pointer.de/blog/projects/socket-activation.html
@@ -1775,6 +1693,8 @@ end;
 
 begin
  mDebug := TStringList.create;
+
+ // RFC: 3.5.  HTTP/2 Connection Preface
  CLIENT_PREFIX := copy(CLIENT_PREFIX_PRISM,1,3) + CLIENT_PREFIX_HTTP + copy(CLIENT_PREFIX_PRISM,4,MaxInt);
 
  // Check RFC Conditions

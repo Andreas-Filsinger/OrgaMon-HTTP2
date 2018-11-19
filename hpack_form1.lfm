@@ -101,7 +101,7 @@ object Form1: TForm1
         Height = 38
         Top = 360
         Width = 352
-        Caption = 'send SETTINGS'
+        Caption = 'write'
         OnClick = Button9Click
         ParentFont = False
         TabOrder = 5

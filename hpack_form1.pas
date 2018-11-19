@@ -206,8 +206,10 @@ end;
 
 procedure TForm1.Button25Click(Sender: TObject);
 begin
+ EnsureHTTP2;
  ShowDebugMessages;
- fHTTP2.debug(fHTTP2.r_DATA(0,'It works!'));
+
+ fHTTP2.debug(fHTTP2.r_DATA(0,THTTP2_Connection.NULL_PAGE));
  memo3.lines.addstrings(HTTP2.mDebug);
  mDebug.clear;
 end;
@@ -217,18 +219,20 @@ var
  H : THPACK;
 begin
  EnsureHTTP2;
+ ShowDebugMessages;
 
- fHTTP2.HEADERS_OUT := THPACK.create;
  with fHTTP2.HEADERS_OUT do
  begin
+  clear;
   add(':status=200');
   add('server=' + Server);
   add('date=' + Date);
   add('content-type=text/html; charset=UTF-8');
   encode;
  end;
+
  ShowDebugMessages;
- fHTTP2.debug(fHTTP2.HEADERS_OUT.Wire);
+ fHTTP2.debug(fHTTP2.r_HEADER(0));
  memo3.lines.addstrings(HTTP2.mDebug);
  mDebug.clear;
 end;
@@ -304,10 +308,11 @@ end;
 
 procedure TForm1.Button13Click(Sender: TObject);
 var
-    BytesWritten : cint;
+ BytesWritten : cint;
 begin
-  BytesWritten := fHTTP2.write(@CLIENT_PREFIX[1],length(CLIENT_PREFIX));
-  sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
+ // thats NOT ok for a server
+ BytesWritten := fHTTP2.write(@CLIENT_PREFIX[1],length(CLIENT_PREFIX));
+ sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
 end;
 
 procedure TForm1.Button14Click(Sender: TObject);
@@ -398,7 +403,7 @@ var
  BytesWritten: cint;
  n : Integer;
 begin
-  D := fHTTP2.PING(PING_PAYLOAD);
+  D := fHTTP2.r_PING(PING_PAYLOAD);
 
   // save it as "init"
   InitPathToTest;
@@ -622,45 +627,23 @@ begin
  ShowDebugMessages;
 end;
 
-
 procedure TForm1.Button9Click(Sender: TObject);
-var
- D : RawByteString;
- DD: string;
- BytesWritten: cint;
- n : Integer;
 begin
-  D := fHTTP2.StartFrames;
-
-  // save it as "init"
-  InitPathToTest;
-  fHTTP2.SaveRawBytes(D,PathToTests+'init.http2');
-
-
-  sDebug.add('--------------------------------------------');
-
-  DD := '';
-  for n := 1 to length(D) do
-  begin
-    DD := DD + ' ' + IntToHex(ord(D[n]),2);
-    if (pred(n) MOD 16=15) then
-    begin
-     sDebug.add(DD);
-     DD := '';
-    end;
-  end;
-  if (DD<>'') then
-   sDebug.add(DD);
-
-  sDebug.add('--------------------------------------------');
-
-  if assigned(fHTTP2) then
-  begin
-    BytesWritten := fHTTP2.write(@D[1],length(D));
-    sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
-  end;
-
+ with fHTTP2 do
+ begin
+  write(
+   {} r_SETTINGS +
+   {} r_WINDOW_UPDATE(0,121212)+
+   {} r_SETTINGS_ACK
+  );
   ShowDebugMessages;
+
+  write(
+   {} r_HEADER(15) +
+   {} r_DATA(15,NULL_PAGE)
+  );
+  ShowDebugMessages;
+ end;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);

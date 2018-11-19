@@ -77,8 +77,8 @@ type
     procedure wB(Bit:boolean); overload; // write one Bit
     procedure wB(Bit:Byte); overload; // write one Bit
     procedure wI(Int:integer); // write one Integer
-    procedure wO(L:String); // write a Literal
-    procedure wH(L:String); // write a Huffman-encoded Literal
+    procedure wO(Literal:String); // write a Literal
+    procedure wH(Literal:String); // write a Huffman-compressed Literal
 
     // Wire - Stream coming from the wire
     function getWire : RawByteString;
@@ -144,7 +144,7 @@ type
 implementation
 
 uses
-   math;
+ math;
 
 const
  // RFC : "Appendix A.  Static Table Definition"
@@ -415,17 +415,17 @@ begin
 
 end;
 
-procedure THPACK.wO(L: String);
+procedure THPACK.wO(Literal: String);
 var
  Len : Integer;
 begin
-  Len := length(L);
+  Len := length(Literal);
   wI(Len);
-  iWire := iWire + L;
+  iWire += Literal;
   inc(BytePos, Len);
 end;
 
-procedure THPACK.wH(L: String);
+procedure THPACK.wH(Literal: String);
 begin
  // ERROR: not implemented right now
 end;
@@ -2486,7 +2486,7 @@ var
 begin
  result := '';
  for n := 1 to length(s) DIV 2 do
-  result := result + chr(StrToInt('$'+copy(s,pred(n*2),2)));
+  result += chr(StrToInt('$'+copy(s,pred(n*2),2)));
 end;
 
 class function THPACK.HuffmanOptionToString(H: Boolean): string;
@@ -2521,7 +2521,7 @@ begin
   begin
    tmp := '';
    for bb := 0 to 7 do
-    tmp := tmp + '| ' + toBinary(r[n],bb) + ' ';
+    tmp += '| ' + toBinary(r[n],bb) + ' ';
    add(tmp + '|');
    add('+---+---+---+---+---+---+---+---+');
   end;
@@ -2539,9 +2539,21 @@ begin
 end;
 
 class function THPACK.Date: string;
+//
 // RFC1123 / rfc1849 5.1.  Date
-// 'ShortDayNames, d ShortMonthNames YYYY hh:nn:ss GMT'
-// Length is 28 or 29
+// 'ShortDayNames, d[d] ShortMonthNames YYYY hh:nn:ss GMT'
+// Length(Date) is 28 or 29
+//
+
+// imp pend:
+//
+// "Date" should be calculated at the first time requested and then
+// be a huffman-compressed constant for about 1000 ms.
+// After this, a time should callback us to update the constant.
+// A sync Object should ensure nothing is going wrong in this
+// update phase.
+//
+
 const
  ShortDayNames : Array[1..7] of string =
    ( 'Sun','Mon','Tue','Wed','Thu','Fri','Sat' );
