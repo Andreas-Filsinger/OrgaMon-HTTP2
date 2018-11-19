@@ -34,6 +34,7 @@ type
     Button24: TButton;
     Button25: TButton;
     Button26: TButton;
+    Button27: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -78,6 +79,7 @@ type
     procedure Button24Click(Sender: TObject);
     procedure Button25Click(Sender: TObject);
     procedure Button26Click(Sender: TObject);
+    procedure Button27Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -214,18 +216,52 @@ procedure TForm1.Button26Click(Sender: TObject);
 var
  H : THPACK;
 begin
+ EnsureHTTP2;
+
  fHTTP2.HEADERS_OUT := THPACK.create;
  with fHTTP2.HEADERS_OUT do
  begin
   add(':status=200');
   add('server=' + Server);
-  add('date=' + date);
+  add('date=' + Date);
   add('content-type=text/html; charset=UTF-8');
   encode;
  end;
  ShowDebugMessages;
  fHTTP2.debug(fHTTP2.HEADERS_OUT.Wire);
  memo3.lines.addstrings(HTTP2.mDebug);
+ mDebug.clear;
+end;
+
+procedure TForm1.Button27Click(Sender: TObject);
+var
+  n,k : Integer;
+  S : string;
+  B : TStringList;
+  D : RawByteString;
+begin
+
+ D := '';
+ with memo3.lines do
+  for n := 0 to pred(count) do
+  begin
+   S := Strings[n];
+
+   k := pos('>',S);
+   if k>0 then
+    S := copy(S,succ(k),MaxInt);
+
+   k := pos('<',S);
+   if k>0 then
+    S := copy(S,succ(k),MaxInt);
+
+   D := D + StrFilter(S,'0123456789ABCDEFabcdef');
+  end;
+
+ B := THPACK.HexStrToBinaryDebug(D);
+ mDebug.addStrings(B);
+ B.free;
+ ShowDebugMessages;
  mDebug.clear;
 end;
 

@@ -134,6 +134,8 @@ type
 
     class function HexStrToRawByteString(s:String) : RawByteString;
     class function HuffmanOptionToString(H:Boolean) : string;
+    class function HexStrToBinaryDebug(r:RawByteString) : TStringList;
+
     //
     class function Date : string;
     class function Server : string;
@@ -361,6 +363,7 @@ begin
  end;
  mDebug.add('L '+IntToStr(result));
 end;
+
 procedure THPACK.wI(Int: integer);
 var
  N : Integer; // We have N Bits to store the Value
@@ -405,9 +408,10 @@ begin
  end;
 
  // encode I on 8 bits
- wB(false); // EOF-Marker
+ wB(false); // EOF-Marker "0"
  iWire[BytePos] := chr(Int);
  inc(BytePos);
+ BitPos := 0;
 
 end;
 
@@ -2474,7 +2478,6 @@ begin
    wI(TABLE_INDEX);
   end;
  end;
-
 end;
 
 class function THPACK.HexStrToRawByteString(s: String): RawByteString;
@@ -2494,6 +2497,37 @@ begin
    result := 'S';
 end;
 
+class function THPACK.HexStrToBinaryDebug(R: RawByteString): TStringList;
+
+ function toBinary (c : char; b : Integer) : string;
+ begin
+   if ((ord(c) and SingleBitMask[b])>0) then
+    result := '1'
+   else
+   result := '0';
+ end;
+
+var
+   n,bb : Integer;
+   tmp : string;
+begin
+ R := HexStrToRawByteString(R);
+ result := TStringList.create;
+ with result do
+ begin
+  add('  O   I   2   3   4   5   6   7  ');
+  add('+---+---+---+---+---+---+---+---+');
+  for n := 1 to length(r) do
+  begin
+   tmp := '';
+   for bb := 0 to 7 do
+    tmp := tmp + '| ' + toBinary(r[n],bb) + ' ';
+   add(tmp + '|');
+   add('+---+---+---+---+---+---+---+---+');
+  end;
+ end;
+end;
+
 function NowGMT: TDateTime;
 var
   ST: TSystemTime;
@@ -2507,6 +2541,7 @@ end;
 class function THPACK.Date: string;
 // RFC1123 / rfc1849 5.1.  Date
 // 'ShortDayNames, d ShortMonthNames YYYY hh:nn:ss GMT'
+// Length is 28 or 29
 const
  ShortDayNames : Array[1..7] of string =
    ( 'Sun','Mon','Tue','Wed','Thu','Fri','Sat' );
