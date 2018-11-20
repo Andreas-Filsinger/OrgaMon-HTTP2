@@ -135,7 +135,8 @@ type
     class function HexStrToRawByteString(s:String) : RawByteString;
     class function HuffmanOptionToString(H:Boolean) : string;
     class function HexStrToBinaryDebug(r:RawByteString) : TStringList;
-
+    class function RawByteStringToHuffman(R:RawByteString) : RawByteString;
+    class function RawByteStringToHexStr(R:RawByteString) : String;
     //
     class function Date : string;
     class function Server : string;
@@ -234,6 +235,15 @@ const
   {} %00011111,
   {} %00111111,
   {} %01111111);
+
+ HuffmanFillupMask : array[1..7] of Byte = (
+  {} %01111111,
+  {} %00111111,
+  {} %00011111,
+  {} %00001111,
+  {} %00000111,
+  {} %00000011,
+  {} %00000001);
 
 // RFC : "Appendix B.  Huffman Code"
 
@@ -2340,62 +2350,6 @@ end;
 
 procedure THPACK.Encode;
 
- function Huffman_encode(s:RawByteString) : RawByteString;
- (*
-     The Idea is, to have a Work-Bench wich is long enough to hold 7 Bits AND the longest Huffman-Code (30 Bit)
-     7+30 = 37 Bits, OK a 64 Bit wide Bench will do the job!
-
-     OOOOOOOO ... OOOOOOOO (a 64 Bit Bench)
-     ^
-     |
-     BitWritePos=0
-
-     00000000 ... 00100001 (the Huffman-Code for "A")
-
-
-     Step 1: Have the Huffman-Codes of your Token ready in the same Wideness of the Bench
-     Step 2: Shift it left so that leftmost Bit is at BitWritePos
-     Step 3: OR the Bench with the code
-     Step 4: Increment your BitWritePos by the length of the code
-     Step 5: Cut all complete leftside Bytes of your Bench and if this is possible decrement BitWritePos
-     Step 6: continue with the next Token at Step 1
-
- *)
- var
-   EAX : QWord;
-   n : integer;
-   Token : Integer;
-   BitWritePos : Byte;
-   BitLen : Byte;
- begin
-   result := '';
-   EAX := 0;
-   BitWritePos := 0;
-   for n := 1 to length(s) do
-   begin
-    Token := ord(s[n]);
-    BitLen := RFC_7541_Appendix_B_Length[Token];
-    EAX := EAX or (RFC_7541_Appendix_B_Bits[Token] shl 64 - BitLen - BitWritePos);
-    inc(BitPos,BitLen);
-
-    while (BitPos>7) do
-    begin
-     // take most left byte
-     result := result + chr(EAX shr 56);
-     // destroy it!
-     EAX := EAX shl 8;
-     // move write Pointer
-     dec(BitWritePos,8);
-    end;
-
-   end;
-
-   // fill all the rest with "1s" that will fullfill Huffman Rules
-   // we never! code EOS
-
- end;
-
-
 var
  n : integer;
  TABLE_INDEX : Integer;
@@ -2497,7 +2451,7 @@ begin
    result := 'S';
 end;
 
-class function THPACK.HexStrToBinaryDebug(R: RawByteString): TStringList;
+class function THPACK.HexStrToBinaryDebug(r: RawByteString): TStringList;
 
  function toBinary (c : char; b : Integer) : string;
  begin
@@ -2526,6 +2480,79 @@ begin
    add('+---+---+---+---+---+---+---+---+');
   end;
  end;
+end;
+
+class function THPACK.RawByteStringToHuffman(R: RawByteString): RawByteString;
+ (*
+     The Idea is, to have a Work-Bench wich is long enough to hold 7 Bits AND the longest Huffman-Code (30 Bit)
+     7+30 = 37 Bits, OK a 64 Bit wide Bench will do the job!
+
+     OOOOOOOO ... OOOOOOOO (a 64 Bit wide Work-Bench)
+     ^
+     |
+     BitWritePos=0
+
+     00000000 ... 00100001 (the Huffman-Code for "A")
+
+     Step 1: Have the Huffman-Codes of your Token ready in the same Wideness of the Bench
+     Step 2: Shift it left so that leftmost Bit is at BitWritePos
+     Step 3: OR the Bench with the code
+     Step 4: Increment your BitWritePos by the length of the code
+     Step 5: Cut all complete leftside Bytes of your Bench and if this is possible decrement BitWritePos
+     Step 6: continue with the next Token at Step 1
+
+ *)
+ var
+   EAX, EBX : QWord;
+   n : integer;
+   Token : Integer;
+   BitWritePos : Byte;
+   BitLen : Byte;
+ begin
+   result := '';
+   EAX := 0;
+   BitWritePos := 0;
+
+   for n := 1 to length(R) do
+   begin
+
+    Token := ord(R[n]);
+    BitLen := RFC_7541_Appendix_B_Length[Token];
+    EBX := RFC_7541_Appendix_B_Bits[Token];
+    EAX := EAX or (EBX shl (64 - BitLen - BitWritePos));
+    inc(BitWritePos, BitLen);
+
+    // pull out fully ready Bytes
+    while (BitWritePos>7) do
+    begin
+
+     // take most left byte
+     result += chr(EAX shr 56);
+
+     // destroy it!
+     EAX := EAX shl 8;
+
+     // move write Pointer
+     dec(BitWritePos, 8);
+    end;
+
+   end;
+
+   // emit the last few bits - fitting in a last byte
+   // fill all the unused with "1s" that will fullfill Huffman Rules
+   // we never! emit the EOS Symbol
+   if (BitWritePos>0) then
+     result += chr((EAX shr 56) + HuffmanFillupMask[BitWritePos] );
+
+end;
+
+class function THPACK.RawByteStringToHexStr(R: RawByteString): String;
+var
+  n : Integer;
+begin
+ result := '';
+ for n := 1 to length(R) do
+   result += IntToHex(ord(R[n]),2);
 end;
 
 function NowGMT: TDateTime;
