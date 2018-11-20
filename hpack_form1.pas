@@ -199,7 +199,7 @@ end;
 procedure TForm1.Button24Click(Sender: TObject);
 begin
  ShowDebugMessages;
- fHTTP2.debug(fHTTP2.r_WINDOW_UPDATE);
+ fHTTP2.debug(fHTTP2.r_WINDOW_UPDATE(0,2147418112));
  memo3.lines.addstrings(HTTP2.mDebug);
  mDebug.clear;
 end;
@@ -613,22 +613,26 @@ begin
    if k>0 then
     S := copy(S,succ(k),MaxInt);
 
-   D := D + StrFilter(S,'0123456789ABCDEFabcdef');
+   D += StrFilter(S,'0123456789ABCDEFabcdef');
   end;
 
- // Auto-Detect if this is the "intitial Packet" with CLIENT_PREFIX
- if pos('5052',D)=1 then
-  fHTTP2.AutomataState := 0
- else
-  fHTTP2.AutomataState := 1;
+ with fHTTP2 do
+ begin
+   ParserClear;
 
- fHTTP2.enqueue(THPACK.HexStrToRawByteString(D));
+   // Auto-Detect if this is the "intitial Packet" with CLIENT_PREFIX
+   if pos('5052',D)=1 then
+    AutomataState := 0
+   else
+    AutomataState := 1;
 
+   enqueue(THPACK.HexStrToRawByteString(D));
+ end;
  ShowDebugMessages;
 end;
 
 const
-   AutoMataState : Integer = 0;
+  _AutoMataState : Integer = 0;
 
 procedure TForm1.Button9Click(Sender: TObject);
 var
@@ -636,16 +640,31 @@ var
 begin
  with fHTTP2 do
  begin
-  case AutoMataState of
-  0 : R := r_SETTINGS_ACK;
-  1 : R := r_SETTINGS;
-  2 : R := r_WINDOW_UPDATE(0,121212);
-  3 : R := r_HEADER(15);
-  4 : R := r_DATA(15,NULL_PAGE);
+  case _AutoMataState of
+   0 : R := r_SETTINGS+r_WINDOW_UPDATE(0,2147418112);
+   1 : R := r_SETTINGS_ACK;
+   2 : begin
+
+    with HEADERS_OUT do
+     begin
+      clear;
+      add(':status=200');
+      add('server=' + Server);
+      add('date=' + Date);
+      add('content-type=text/html; charset=UTF-8');
+      encode;
+     end;
+
+    R := r_HEADER(15);
+
+   end;
+   3 : R := r_DATA(15,NULL_PAGE);
   end;
+  mDebug.add('send Paket '+IntToStr(_AutoMataState)+' ...');
   write(R);
+
   ShowDebugMessages;
-  inc(AutoMataState);
+  inc(_AutoMataState);
  end;
 end;
 

@@ -525,12 +525,6 @@ begin
  result := STATE_NAMES[s];
 end;
 
-  (*
- a) SETTINGS
- b) r_WINDOW_UPDATE,   Stream 0  Window_Size_Increment 2147418112
- c) r_SETTINGS ACK
- *)
-
 function THTTP2_Connection.r_SETTINGS_ACK: RawByteString;
 var
  FRAME : THTTP2_FRAME;
@@ -579,10 +573,10 @@ begin
 
  with SETTINGS do
   Settings_Data :=
-   {} add(SETTINGS_TYPE_MAX_FRAME_SIZE, MAX_FRAME_SIZE) +
-   {} add(SETTINGS_TYPE_MAX_HEADER_LIST_SIZE, MAX_HEADER_LIST_SIZE) +
+   {} add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS, MAX_CONCURRENT_STREAMS)+
    {} add(SETTINGS_TYPE_INITIAL_WINDOW_SIZE, INITIAL_WINDOW_SIZE)+
-   {} add(SETTINGS_TYPE_MAX_CONCURRENT_STREAMS, MAX_CONCURRENT_STREAMS);
+   {} add(SETTINGS_TYPE_MAX_FRAME_SIZE, MAX_FRAME_SIZE) +
+   {} add(SETTINGS_TYPE_MAX_HEADER_LIST_SIZE, MAX_HEADER_LIST_SIZE);
 
   result := FRAME.asString + Settings_Data;
 end;
@@ -1505,8 +1499,7 @@ end;
 
 function THTTP2_Connection.write(buf: Pointer; num: cint): cint; overload;
 begin
- result := SSL_write(SSL,@buf,num);
-// result := num;
+ result := SSL_write(SSL,buf,num);
  mDebug.Add(IntTostr(result)+'/'+IntToStr(num)+' Byte(s) written ...');
 end;
 
