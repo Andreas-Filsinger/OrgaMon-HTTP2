@@ -326,15 +326,15 @@ object Form1: TForm1
     end
     object TabSheet1: TTabSheet
       Caption = 'HEADER-DATA (HPACK) bench'
-      ClientHeight = 948
-      ClientWidth = 1966
+      ClientHeight = 1022
+      ClientWidth = 1931
       OnContextPopup = TabSheet1ContextPopup
       ParentFont = False
       object Memo1: TMemo
         Left = 24
-        Height = 282
+        Height = 356
         Top = 264
-        Width = 1927
+        Width = 1892
         Anchors = [akTop, akLeft, akRight, akBottom]
         Lines.Strings = (
           '4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d'
@@ -376,8 +376,8 @@ object Form1: TForm1
       object Edit2: TEdit
         Left = 24
         Height = 33
-        Top = 561
-        Width = 1606
+        Top = 635
+        Width = 1571
         Anchors = [akLeft, akRight, akBottom]
         ParentFont = False
         TabOrder = 1
@@ -386,7 +386,7 @@ object Form1: TForm1
       object Button2: TButton
         Left = 24
         Height = 38
-        Top = 610
+        Top = 684
         Width = 330
         Anchors = [akLeft, akBottom]
         Caption = 'Run all "decode" Tests ...'
@@ -447,9 +447,9 @@ object Form1: TForm1
         TabOrder = 7
       end
       object Button1: TButton
-        Left = 288
+        Left = 291
         Height = 38
-        Top = 8
+        Top = 5
         Width = 296
         Anchors = [akLeft, akBottom]
         Caption = 'decode (HPACK-World)'
