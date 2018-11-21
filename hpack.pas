@@ -2350,6 +2350,33 @@ end;
 
 procedure THPACK.Encode;
 
+ procedure wBL(Literal:RawByteString);
+ var
+  L : Integer;
+  HuffmanRepresentation : RawByteString;
+  HuffmanWins : boolean;
+ begin
+  L := length(Literal);
+  HuffmanWins := false;
+  repeat
+   if (length(Literal)<L) then
+    break;
+   HuffmanRepresentation := RawByteStringToHuffman(Literal);
+   if (length(HuffmanRepresentation)>=L) then
+    break;
+   HuffmanWins := true;
+  until true;
+
+  if HuffmanWins then
+  begin
+   wb(1); wO(HuffmanRepresentation);
+  end else
+  begin
+   wb(0); wO(Literal);
+  end;
+ end;
+
+
 var
  n : integer;
  TABLE_INDEX : Integer;
@@ -2414,16 +2441,15 @@ begin
    if (TABLE_INDEX=-1) then
    begin
     // encode NameString
-    wb(0); wO(NameString);
-
+    wBL(NameString);
     // encode ValueString
-    wb(0); wO(ValueString);
+    wBL(ValueString);
    end else
    begin
      // request Table for "name"
      wI(TABLE_INDEX);
      // encode Value
-     wb(0); wO(ValueString);
+     wBL(ValueString);
    end;
   end else
   begin
@@ -2516,14 +2542,10 @@ class function THPACK.RawByteStringToHuffman(R: RawByteString): RawByteString;
    for n := 1 to length(R) do
    begin
 
-    // copy the Symbol to the Workbench "B"
     Token := ord(R[n]);
-    EBX := RFC_7541_Appendix_B_Bits[Token];
-
-    // shift "B" to end of the Bit-Train "A"
     BitLen := RFC_7541_Appendix_B_Length[Token];
+    EBX := RFC_7541_Appendix_B_Bits[Token];
     EAX := EAX or (EBX shl (64 - BitLen - BitWritePos));
-
     inc(BitWritePos, BitLen);
 
     // pull out fully ready Bytes

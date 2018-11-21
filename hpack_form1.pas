@@ -35,6 +35,7 @@ type
     Button25: TButton;
     Button26: TButton;
     Button27: TButton;
+    Button28: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -42,6 +43,7 @@ type
     Button7: TButton;
     Button8: TButton;
     Button9: TButton;
+    Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
     Edit4: TEdit;
@@ -57,6 +59,7 @@ type
     Memo2: TMemo;
     Memo3: TMemo;
     Memo4: TMemo;
+    Memo5: TMemo;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
@@ -80,6 +83,7 @@ type
     procedure Button25Click(Sender: TObject);
     procedure Button26Click(Sender: TObject);
     procedure Button27Click(Sender: TObject);
+    procedure Button28Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -228,6 +232,7 @@ begin
   add('server=' + Server);
   add('date=' + Date);
   add('content-type=text/html; charset=UTF-8');
+  add('custom=~~~~~~~~');
   encode;
  end;
 
@@ -267,6 +272,16 @@ begin
  B.free;
  ShowDebugMessages;
  mDebug.clear;
+end;
+
+procedure TForm1.Button28Click(Sender: TObject);
+var
+ R,H : RawByteString;
+begin
+  R := THPACK.RawByteStringToHuffman(edit1.Text);
+  H := THPACK.RawByteStringToHexStr(R);
+  memo5.Lines.add(H);
+  memo5.Lines.AddStrings(THPACK.HexStrToBinaryDebug(H));
 end;
 
 procedure TForm1.Button10Click(Sender: TObject);
