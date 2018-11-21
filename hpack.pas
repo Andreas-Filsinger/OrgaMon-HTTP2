@@ -2516,10 +2516,14 @@ class function THPACK.RawByteStringToHuffman(R: RawByteString): RawByteString;
    for n := 1 to length(R) do
    begin
 
+    // copy the Symbol to the Workbench "B"
     Token := ord(R[n]);
-    BitLen := RFC_7541_Appendix_B_Length[Token];
     EBX := RFC_7541_Appendix_B_Bits[Token];
+
+    // shift "B" to end of the Bit-Train "A"
+    BitLen := RFC_7541_Appendix_B_Length[Token];
     EAX := EAX or (EBX shl (64 - BitLen - BitWritePos));
+
     inc(BitWritePos, BitLen);
 
     // pull out fully ready Bytes
