@@ -237,6 +237,7 @@ const
   {} %00111111,
   {} %01111111);
 
+ //
  HuffmanFillupMask : array[1..7] of Byte = (
   {} %01111111,
   {} %00111111,
@@ -372,7 +373,7 @@ begin
 
   until false;
  end;
- mDebug.add('L '+IntToStr(result));
+ // mDebug.add('L '+IntToStr(result));
 end;
 
 procedure THPACK.wI(Int: integer);
@@ -616,12 +617,11 @@ end;
 
 procedure THPACK.Decode;
 
-var
- ValueString : RawByteString;
+function Huffman_decode : String;
 
  procedure sym(b:byte);
  begin
-   ValueString := ValueString + chr(b);
+   result += chr(b);
  end;
 
 // { $ I RFC_7541_Appendix_B.pas}
@@ -2175,10 +2175,8 @@ begin
  end;
 end;
 
-procedure huffman_decode;
 begin
-
-   ValueString := '';
+   result := '';
     if not(decode_RFC_7541_Appendix_B) then
       if (Octets<>0) then
        raise Exception.Create('Huffman Code Error, '+IntTOStr(Octets)+' Octets left!');
@@ -2191,17 +2189,11 @@ begin
     end;
 end;
 
-function fHuffman_decode: RawByteString;
-begin
-   huffman_decode;
-   result := ValueString;
-end;
-
 var
- NameString : string;
- NameValuePair: string;
+ NameString, ValueString : String;
+ NameValuePair : String;
  TABLE_INDEX : Integer;
- H_Name,H_Value : boolean;
+ H_Name, H_Value : boolean;
  Binary_Representation_Protected : boolean;
 begin
  BytePos := 0;
@@ -2246,7 +2238,7 @@ begin
         H_Value := B;
         Octets := I(7);
         if H_Value then
-         huffman_decode
+         ValueString := Huffman_decode
         else
           ValueString := O;
         NameValuePair := nTABLE[TABLE_INDEX]+'='+ValueString;
@@ -2258,7 +2250,7 @@ begin
         H_Name := B;
         Octets := I(7);
         if H_Name then
-         NameString := fHuffman_decode
+         NameString := Huffman_decode
         else
          NameString := O;
 
@@ -2266,7 +2258,7 @@ begin
         H_Value := B;
         Octets := I(7);
         if H_Value then
-         huffman_decode
+         ValueString := Huffman_decode
         else
          ValueString := O;
         NameValuePair := NameString+'='+ValueString;
@@ -2316,7 +2308,7 @@ begin
          H_Value := B;
          Octets := I(7);
          if H_Value then
-          huffman_decode
+          ValueString := Huffman_decode
          else
           ValueString := O;
          NameValuePair := nTABLE[TABLE_INDEX]+'='+ValueString;
@@ -2328,7 +2320,7 @@ begin
          H_Name := B;
          Octets := I(7);
          if H_Name then
-          NameString := fHuffman_decode
+          NameString := Huffman_decode
          else
           NameString := O;
 
@@ -2336,7 +2328,7 @@ begin
          H_Value := B;
          Octets := I(7);
          if H_Value then
-          huffman_decode
+          ValueString := Huffman_decode
          else
           ValueString := O;
          NameValuePair := NameString+'='+ValueString;
