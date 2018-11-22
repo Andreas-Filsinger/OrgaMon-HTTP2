@@ -228,11 +228,11 @@ begin
  with fHTTP2.HEADERS_OUT do
  begin
   clear;
-  add(':status=200');
-  add('server=' + Server);
-  add('date=' + Date);
-  add('content-type=text/html; charset=UTF-8');
-  add('custom=~~~~~~~~');
+//  add(':status=200');
+//  add('server=' + Server);
+//  add('date=' + Date);
+//  add('content-type=text/html; charset=UTF-8');
+  add('custom=~');
   encode;
  end;
 

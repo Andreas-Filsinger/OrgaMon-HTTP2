@@ -51,8 +51,8 @@ type
 
     // a dynamic "Key=Value" Table with a static beginning of 61 Pairs
     // Index[0] is never used
-    iTABLE : TStringList;
-    nTABLE : TStringList; // clone of iTABLE but no value-Part
+    iTABLE : TStringList; // the full name=value Table
+    nTABLE : TStringList; // clone of iTABLE, but NO values
 
     notIndexed : TStringList; // Header-Names, where "caching" of the values makes no sense
     neverIndexed : TStringList; // Header-Names, where "caching" / "storing" and "modifiy" is forbidden
@@ -66,7 +66,9 @@ type
     BytePos : UInt16; // 0..Length(iWIRE)-1
     BytePosLast: UInt16; // Length(iWIRE)-1
     BitPos : byte; // 0..7
-    Octets : UInt32; // Length/Count of visible Octets, allowed to proceed (Security)
+    Octets : UInt32; // Length/Count of visible coming Octets,
+                     // allowed to bitwise proceed
+                     // this is for more security
 
     // read Functions @ BytePos.BitPos - they move that index
     function B : boolean; // inline; // read 1 Bit from the Turing Machine
@@ -74,11 +76,10 @@ type
     function O : RawByteString; // read a octet stream of given length in [Octets]
 
     // write Functions
-    procedure wB(Bit:boolean); overload; // write one Bit
-    procedure wB(Bit:Byte); overload; // write one Bit
-    procedure wI(Int:integer); // write one Integer
-    procedure wO(Literal:String); // write a Literal
-    procedure wH(Literal:String); // write a Huffman-compressed Literal
+    procedure wB(Bit:boolean); overload; // write one Bit true/false
+    procedure wB(Bit:Byte); overload; // write one Bit 0/1
+    procedure wI(Int:Integer); // write one Integer
+    procedure wO(Literal : RawByteString); // write a Literal
 
     // Wire - Stream coming from the wire
     function getWire : RawByteString;
@@ -425,7 +426,7 @@ begin
 
 end;
 
-procedure THPACK.wO(Literal: String);
+procedure THPACK.wO(Literal: RawByteString);
 var
  Len : Integer;
 begin
@@ -433,11 +434,6 @@ begin
   wI(Len);
   iWire += Literal;
   inc(BytePos, Len);
-end;
-
-procedure THPACK.wH(Literal: String);
-begin
- // ERROR: not implemented right now
 end;
 
 procedure THPACK.wB(Bit: boolean);
@@ -2215,7 +2211,7 @@ begin
  begin
 
    // RFC: "6. Binary Format"
-   Octets := 5; // longest possible Code Block
+   Octets := 1; // allow only 1 Byte
    if B then
    begin
     // "1" ...
@@ -2243,6 +2239,8 @@ begin
       // "01" ...
       // RFC "6.2.1.  Literal Header Field with Incremental Indexing"
       TABLE_INDEX := I(6);
+
+      Octets := 1; // allow only 1 more Byte
       if (TABLE_INDEX>0) then
       begin
         H_Value := B;
@@ -2263,6 +2261,8 @@ begin
          NameString := fHuffman_decode
         else
          NameString := O;
+
+        Octets := 1;
         H_Value := B;
         Octets := I(7);
         if H_Value then
@@ -2310,6 +2310,7 @@ begin
       // "0001"
       // RFC "6.2.3.  Literal Header Field Never Indexed"
        TABLE_INDEX := I(4);
+       Octets := 1; // allow only 1 Byte
        if (TABLE_INDEX>0) then
        begin
          H_Value := B;
@@ -2330,6 +2331,8 @@ begin
           NameString := fHuffman_decode
          else
           NameString := O;
+
+         Octets := 1;
          H_Value := B;
          Octets := I(7);
          if H_Value then
@@ -2359,7 +2362,7 @@ procedure THPACK.Encode;
   L := length(Literal);
   HuffmanWins := false;
   repeat
-   if (length(Literal)<L) then
+   if (L<3) then
     break;
    HuffmanRepresentation := RawByteStringToHuffman(Literal);
    if (length(HuffmanRepresentation)>=L) then
@@ -2393,7 +2396,7 @@ begin
  for n := 0 to pred(count) do
  begin
 
-  // check if this header is in the TABLE
+  // check if this full Name=value pair is in the TABLE
   TABLE_INDEX := iTABLE.indexof(Strings[n]);
 
   if (TABLE_INDEX=-1) then
@@ -2440,6 +2443,7 @@ begin
 
    if (TABLE_INDEX=-1) then
    begin
+    wI(0);
     // encode NameString
     wBL(NameString);
     // encode ValueString
