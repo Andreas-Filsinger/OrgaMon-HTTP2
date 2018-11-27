@@ -2449,7 +2449,7 @@ begin
    end;
   end else
   begin
-   // full hit
+   // full table hit (name and value)
    wb(1); { Prefix }
    wI(TABLE_INDEX);
   end;
@@ -2507,7 +2507,7 @@ end;
 class function THPACK.RawByteStringToHuffman(R: RawByteString): RawByteString;
  (*
      The Idea is, to have a Work-Bench wich is long enough to hold 7 Bits AND the longest Huffman-Code (30 Bit)
-     7+30 = 37 Bits, OK a 64 Bit wide Bench will do the job!
+     7+30 = 37 Bits, OK a 64 Bit wide Bench will do the job (48 Bit will do it too)!
 
      OOOOOOOO ... OOOOOOOO (a 64 Bit wide Work-Bench)
      ^
