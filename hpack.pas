@@ -2354,9 +2354,14 @@ procedure THPACK.Encode;
   L := length(Literal);
   HuffmanWins := false;
   repeat
+   // Literals of Length "1" and "2" never get Huffman encoded
+   // this is not worth it, and waste of energy
    if (L<3) then
     break;
+
    HuffmanRepresentation := RawByteStringToHuffman(Literal);
+   // The Huffman Representation must be noticeable shorter
+   // than the uncompressed Literal,
    if (length(HuffmanRepresentation)>=L) then
     break;
    HuffmanWins := true;
