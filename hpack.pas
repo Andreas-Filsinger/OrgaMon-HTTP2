@@ -2345,6 +2345,7 @@ end;
 
 procedure THPACK.Encode;
 
+ // write Bit and Literal
  procedure wBL(Literal:RawByteString);
  var
   L : Integer;
@@ -2352,18 +2353,24 @@ procedure THPACK.Encode;
   HuffmanWins : boolean;
  begin
   L := length(Literal);
+
   HuffmanWins := false;
   repeat
    // Literals of Length "1" and "2" never get Huffman encoded
-   // this is not worth it, and waste of energy
+   // this is not worth it, and a waste of energy
    if (L<3) then
     break;
 
+   // do the encoding/compression
    HuffmanRepresentation := RawByteStringToHuffman(Literal);
+
    // The Huffman Representation must be noticeable shorter
-   // than the uncompressed Literal,
-   if (length(HuffmanRepresentation)>=L) then
+   // than the uncompressed Literal, if not the uncompressed
+   // goes to the wire:
+   // so if the gain is smaller than 2 Bytes
+   if (L-length(HuffmanRepresentation)<2) then
     break;
+
    HuffmanWins := true;
   until true;
 
@@ -2374,6 +2381,7 @@ procedure THPACK.Encode;
   begin
    wb(0); wO(Literal);
   end;
+
  end;
 
 
