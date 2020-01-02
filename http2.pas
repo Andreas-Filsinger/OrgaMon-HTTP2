@@ -7,7 +7,7 @@
 |
 |    HTTP/2 (as described in RFC 7540)
 |
-|    (c) 2017 - 2018  Andreas Filsinger
+|    (c) 2017 - 2020  Andreas Filsinger
 |
 |    This program is free software: you can redistribute it and/or modify
 |    it under the terms of the GNU General Public License as published by
@@ -847,14 +847,15 @@ begin
             mDebug.addStrings(HEADERS_IN.DebugStrings);
 
            end;
+
           FRAME_TYPE_PRIORITY : begin;
 
             if (Cardinal(Len)<>5) then
-             begin
+            begin
                mDebug.add('ERROR: multible unsupported');
                FatalError := true;
                break;
-             end;
+            end;
 
             with PFRAME_PRIORITY(@ClientNoise[CN_Pos2])^ do
             begin
@@ -864,31 +865,30 @@ begin
                {} inttostr(cardinal(Stream_Dependency))+' Weight='+
                {} IntToStr(Weight));
 
-            // find stream
-            StreamFound := false;
-            for n := 0 to pred(Streams.Count) do
-              if (cardinal(Stream_ID)=cardinal(THTTP2_Stream(Streams[n]).ID)) then
+              // find stream
+              StreamFound := false;
+              for n := 0 to pred(Streams.Count) do
+                if (cardinal(Stream_ID)=cardinal(THTTP2_Stream(Streams[n]).ID)) then
+                begin
+                  StreamFound := true;
+                  break;
+                end;
+
+              // Auto-Create if not found
+              if not(StreamFound) then
               begin
-                StreamFound := true;
-                break;
+                S := THTTP2_Stream.Create;
+                with S do
+                begin
+                 ID := cardinal(Stream_ID);
+                 dependency:= cardinal(Stream_Dependency);
+                 weight := Weight;
+                end;
+                Streams.add(S);
               end;
-
-            // Auto-Create if not found
-            if not(StreamFound) then
-            begin
-              S := THTTP2_Stream.Create;
-              with S do
-              begin
-               ID := cardinal(Stream_ID);
-               dependency:= cardinal(Stream_Dependency);
-               weight := Weight;
-              end;
-              Streams.add(S);
             end;
-
-            end;
-
           end;
+
           FRAME_TYPE_RST_STREAM : begin
 
             if (Cardinal(Len)<>4) then
