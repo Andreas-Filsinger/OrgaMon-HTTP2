@@ -1,28 +1,28 @@
 object Form1: TForm1
-  Left = 642
+  Left = 167
   Height = 933
-  Top = 370
-  Width = 1761
+  Top = 280
+  Width = 1951
   Caption = 'Form1'
   ClientHeight = 933
-  ClientWidth = 1761
+  ClientWidth = 1951
   DesignTimePPI = 144
   OnCreate = FormCreate
-  LCLVersion = '2.0.0.2'
+  LCLVersion = '2.0.6.0'
   object PageControl1: TPageControl
     Left = 0
     Height = 933
     Top = 0
-    Width = 1761
-    ActivePage = TabSheet3
+    Width = 1951
+    ActivePage = TabSheet2
     Align = alClient
     ParentFont = False
-    TabIndex = 2
+    TabIndex = 0
     TabOrder = 0
     object TabSheet2: TTabSheet
       Caption = 'FRAME-DATA (HTTP/2) Lab'
       ClientHeight = 895
-      ClientWidth = 1753
+      ClientWidth = 1943
       OnContextPopup = TabSheet2ContextPopup
       OnShow = TabSheet2Show
       ParentFont = False
@@ -39,9 +39,7 @@ object Form1: TForm1
         Lines.Strings = (
           'Setup Help: '
           ''
-          'http://wiki.orgamon.org/index.php5/OrgaMon-next#HTTP.2F2_Server'
-          ''
-          ''
+          'https://wiki.orgamon.org/index.php?title=Http2'
         )
         ParentFont = False
         ScrollBars = ssVertical

@@ -453,6 +453,9 @@ begin
    inc(ErrorCount);
  end;
 
+ // imp pend: is cert still valid?
+ // check_time(X509_CINF
+
  if (ErrorCount=0) then
   result := SSL_TLSEXT_ERR_OK
  else

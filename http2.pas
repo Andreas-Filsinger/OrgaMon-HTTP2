@@ -383,8 +383,6 @@ const
    {} CRLF +
    {} CRLF;
 
-
-
  // Frame Types
  FRAME_TYPE_DATA = 0;
  FRAME_TYPE_HEADERS = 1;
