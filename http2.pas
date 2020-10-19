@@ -1294,14 +1294,7 @@ begin
 
  //  ssl->ctx = SSL_CTX_new(SSLv23_method());
 
- {$ifdef TLS12}
- // setup a TLS 1.2 Context
- // RFC 7540-9.2.
- cs_METH := TLSv1_2_server_method();
- {$else}
  cs_METH := TLS_server_method();
- {$endif}
-
  CTX := SSL_CTX_new(cs_METH);
 
  if not(assigned(CTX)) then

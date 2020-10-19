@@ -219,9 +219,6 @@ const
   SSL_CTX_set_alpn_select_cb: TSSL_CTX_set_alpn_select_cb = nil;
 
   // Methods
-  {$ifdef TLS12}
-  TLSv1_2_server_method: TOpenSSL_method = nil;
-  {$endif}
   TLS_server_method: TOpenSSL_method = nil;
   TLS_client_method: TOpenSSL_method = nil;
 
@@ -600,18 +597,9 @@ begin
    if not (assigned(TLS_server_method)) then
     sDebug.add(LastError+'TLS_server_method');
 
-{$ifdef TLS12}
-TLSv1_2_server_method := TOpenSSL_method(
-  GetProcAddress(libssl_HANDLE, 'TLSv1_2_server_method'));
-if not (assigned(TLSv1_2_server_method)) then
-  sDebug.add(LastError);
-{$endif}
-
-
-    TLS_client_method := TOpenSSL_method(
-      GetProcAddress(libssl_HANDLE, 'TLS_client_method'));
-    if not (assigned(TLS_client_method)) then
-      sDebug.add(LastError);
+   TLS_client_method := TOpenSSL_method(GetProcAddress(libssl_HANDLE, 'TLS_client_method'));
+   if not (assigned(TLS_client_method)) then
+    sDebug.add(LastError);
 
     SSL_CTX_new := TSSL_CTX_new(GetProcAddress(libssl_HANDLE, 'SSL_CTX_new'));
     if not (assigned(SSL_CTX_new)) then

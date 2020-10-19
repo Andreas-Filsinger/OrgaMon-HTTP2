@@ -36,6 +36,7 @@ type
     Button26: TButton;
     Button27: TButton;
     Button28: TButton;
+    Button29: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -84,6 +85,7 @@ type
     procedure Button26Click(Sender: TObject);
     procedure Button27Click(Sender: TObject);
     procedure Button28Click(Sender: TObject);
+    procedure Button29Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
@@ -117,6 +119,7 @@ type
     procedure InitPathToTest;
     procedure ShowDebugMessages;
     procedure Request(s:String);
+    procedure StartServer;
   end;
 
 var
@@ -282,6 +285,11 @@ begin
   H := THPACK.RawByteStringToHexStr(R);
   memo5.Lines.add(H);
   memo5.Lines.AddStrings(THPACK.HexStrToBinaryDebug(H));
+end;
+
+procedure TForm1.Button29Click(Sender: TObject);
+begin
+  StartServer;
 end;
 
 procedure TForm1.Button10Click(Sender: TObject);
@@ -708,13 +716,12 @@ end;
 
 procedure TForm1.TabSheet2Show(Sender: TObject);
 begin
-    pem_Path := edit3.Text;
+ pem_Path := edit3.Text;
  if not(Initialized) then
  begin
-     memo2.Lines.add(cryptossl.Version);
-  memo2.Lines.addstrings(cryptossl.sDebug);
-  memo2.Lines.add('----------');
-  Initialized := true;
+   memo2.Lines.add(cryptossl.Version);
+   memo2.Lines.addstrings(cryptossl.sDebug);
+   Initialized := true;
  end;
 end;
 
@@ -747,6 +754,19 @@ begin
  if (s<>'') then
   sDebug.add(s);
  ShowDebugMessages;
+end;
+
+procedure TForm1.StartServer;
+begin
+  if Initialized then
+  begin
+    InitPathToTest;
+    EnsureHTTP2;
+    FD := getSocket;
+    if (FD<>0) then
+     fHTTP2.Accept(FD);
+    ShowDebugMessages;
+  end;
 end;
 
 end.

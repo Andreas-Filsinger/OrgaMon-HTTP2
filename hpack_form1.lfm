@@ -1,18 +1,19 @@
 object Form1: TForm1
-  Left = 26
-  Height = 500
-  Top = 126
-  Width = 1297
+  Left = 553
+  Height = 856
+  Top = 136
+  Width = 1621
   Caption = 'Form1'
-  ClientHeight = 500
-  ClientWidth = 1297
+  ClientHeight = 856
+  ClientWidth = 1621
+  DesignTimePPI = 120
   OnCreate = FormCreate
-  LCLVersion = '2.0.6.0'
+  LCLVersion = '2.0.10.0'
   object PageControl1: TPageControl
     Left = 0
-    Height = 500
+    Height = 856
     Top = 0
-    Width = 1297
+    Width = 1621
     ActivePage = TabSheet2
     Align = alClient
     ParentFont = False
@@ -20,18 +21,18 @@ object Form1: TForm1
     TabOrder = 0
     object TabSheet2: TTabSheet
       Caption = 'FRAME-DATA (HTTP/2) Lab'
-      ClientHeight = 472
-      ClientWidth = 1289
+      ClientHeight = 823
+      ClientWidth = 1613
       OnContextPopup = TabSheet2ContextPopup
       OnShow = TabSheet2Show
       ParentFont = False
       object Memo2: TMemo
-        Left = 16
-        Height = 354
-        Top = 303
-        Width = 1016
+        Left = 20
+        Height = 442
+        Top = 379
+        Width = 1270
         Font.CharSet = ANSI_CHARSET
-        Font.Height = -18
+        Font.Height = -23
         Font.Name = 'Consolas'
         Font.Pitch = fpFixed
         Font.Quality = fqDraft
@@ -45,174 +46,174 @@ object Form1: TForm1
         TabOrder = 0
       end
       object Button3: TButton
-        Left = 1051
-        Height = 25
-        Top = 176
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 220
+        Width = 294
         Caption = 'open Socket'
         OnClick = Button3Click
         ParentFont = False
         TabOrder = 1
       end
       object Button4: TButton
-        Left = 1051
-        Height = 25
-        Top = 205
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 256
+        Width = 294
         Caption = 'Accept'
         OnClick = Button4Click
         ParentFont = False
         TabOrder = 2
       end
       object Button5: TButton
-        Left = 1051
-        Height = 25
-        Top = 148
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 185
+        Width = 294
         Caption = 'create HTTP2 Server'
         OnClick = Button5Click
         ParentFont = False
         TabOrder = 3
       end
       object Button6: TButton
-        Left = 1051
-        Height = 25
-        Top = 120
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 150
+        Width = 294
         Caption = 'init Path'
         OnClick = Button6Click
         ParentFont = False
         TabOrder = 4
       end
       object Label3: TLabel
-        Left = 1051
-        Height = 15
-        Top = 88
-        Width = 175
+        Left = 1314
+        Height = 20
+        Top = 110
+        Width = 220
         Caption = 'Steps to start the TLS 1.2 Server ...'
         ParentColor = False
         ParentFont = False
       end
       object Button9: TButton
-        Left = 1051
-        Height = 25
-        Top = 240
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 300
+        Width = 294
         Caption = 'write'
         OnClick = Button9Click
         ParentFont = False
         TabOrder = 5
       end
       object Button10: TButton
-        Left = 1051
-        Height = 25
-        Top = 403
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 504
+        Width = 294
         Caption = 'Show Debug Msgs'
         OnClick = Button10Click
         ParentFont = False
         TabOrder = 6
       end
       object Button11: TButton
-        Left = 1051
-        Height = 25
-        Top = 296
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 370
+        Width = 294
         Caption = 'send 16 k rubbish'
         OnClick = Button11Click
         ParentFont = False
         TabOrder = 7
       end
       object Label6: TLabel
-        Left = 1051
-        Height = 15
-        Top = 24
-        Width = 128
+        Left = 1314
+        Height = 20
+        Top = 30
+        Width = 158
         Caption = 'Key and Cert Location ...'
         ParentColor = False
         ParentFont = False
       end
       object Edit3: TEdit
-        Left = 1051
-        Height = 23
-        Top = 48
-        Width = 235
+        Left = 1314
+        Height = 28
+        Top = 60
+        Width = 294
         ParentFont = False
         TabOrder = 8
         Text = 'R:\srv\hosts\'
       end
       object Button7: TButton
-        Left = 1051
-        Height = 25
-        Top = 432
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 540
+        Width = 294
         Caption = 'Parse (again)'
         OnClick = Button7Click
         ParentFont = False
         TabOrder = 9
       end
       object Edit4: TEdit
-        Left = 1051
-        Height = 23
-        Top = 506
-        Width = 235
+        Left = 1314
+        Height = 28
+        Top = 632
+        Width = 294
         ParentFont = False
         TabOrder = 10
         Text = 'client-step-1-headers'
       end
       object Button12: TButton
-        Left = 1051
-        Height = 33
-        Top = 539
-        Width = 235
+        Left = 1314
+        Height = 41
+        Top = 674
+        Width = 294
         Caption = 'Parse'
         OnClick = Button12Click
         ParentFont = False
         TabOrder = 11
       end
       object Label7: TLabel
-        Left = 1058
-        Height = 15
-        Top = 484
-        Width = 100
+        Left = 1322
+        Height = 20
+        Top = 605
+        Width = 123
         Caption = '<Path to Testfiles>'
         ParentColor = False
         ParentFont = False
       end
       object Button13: TButton
-        Left = 1051
-        Height = 25
-        Top = 323
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 404
+        Width = 294
         Caption = 'send ClientInit'
         OnClick = Button13Click
         ParentFont = False
         TabOrder = 12
       end
       object Button17: TButton
-        Left = 1051
-        Height = 25
-        Top = 264
-        Width = 235
+        Left = 1314
+        Height = 31
+        Top = 330
+        Width = 294
         Caption = 'send PING'
         OnClick = Button17Click
         ParentFont = False
         TabOrder = 13
       end
       object Label4: TLabel
-        Left = 16
-        Height = 15
-        Top = 21
-        Width = 154
+        Left = 20
+        Height = 20
+        Top = 26
+        Width = 196
         Caption = 'raw FRAME Data (Hex Dump)'
         ParentColor = False
         ParentFont = False
       end
       object Memo3: TMemo
-        Left = 16
-        Height = 218
-        Top = 40
-        Width = 875
+        Left = 20
+        Height = 272
+        Top = 50
+        Width = 1094
         Lines.Strings = (
           '00 00 06 04 00 00 00 00 00 00 03 00 00 00 65 00'
           '00 04 08 00 00 00 00 00 00 0A 00 00'
@@ -222,103 +223,112 @@ object Form1: TForm1
         TabOrder = 14
       end
       object Button8: TButton
-        Left = 248
-        Height = 25
-        Top = 11
-        Width = 184
+        Left = 310
+        Height = 31
+        Top = 14
+        Width = 230
         Caption = 'decode (FRAME-World)'
         OnClick = Button8Click
         ParentFont = False
         TabOrder = 15
       end
       object Button18: TButton
-        Left = 896
-        Height = 25
-        Top = 40
-        Width = 136
+        Left = 1120
+        Height = 31
+        Top = 50
+        Width = 170
         Caption = 'Clear'
         OnClick = Button18Click
         ParentFont = False
         TabOrder = 16
       end
       object Button19: TButton
-        Left = 957
-        Height = 25
-        Top = 273
-        Width = 75
+        Left = 1167
+        Height = 31
+        Top = 288
+        Width = 102
         Caption = 'Clear'
         OnClick = Button19Click
         ParentFont = False
         TabOrder = 17
       end
       object Label5: TLabel
-        Left = 16
-        Height = 15
-        Top = 280
-        Width = 87
+        Left = 20
+        Height = 20
+        Top = 350
+        Width = 106
         Caption = 'HTTP/2 FRAME_'
         ParentColor = False
         ParentFont = False
       end
       object Button22: TButton
-        Left = 896
-        Height = 25
-        Top = 67
-        Width = 136
+        Left = 1120
+        Height = 31
+        Top = 84
+        Width = 170
         Caption = 'SETTINGS_ACK'
         OnClick = Button22Click
         ParentFont = False
         TabOrder = 18
       end
       object Button23: TButton
-        Left = 896
-        Height = 25
-        Top = 95
-        Width = 136
+        Left = 1120
+        Height = 31
+        Top = 119
+        Width = 170
         Caption = 'SETTINGS'
         OnClick = Button23Click
         ParentFont = False
         TabOrder = 19
       end
       object Button24: TButton
-        Left = 896
-        Height = 25
-        Top = 122
-        Width = 136
+        Left = 1120
+        Height = 31
+        Top = 152
+        Width = 170
         Caption = 'WINDOW_UPDATE'
         OnClick = Button24Click
         ParentFont = False
         TabOrder = 20
       end
       object Button25: TButton
-        Left = 896
-        Height = 25
-        Top = 149
-        Width = 136
+        Left = 1120
+        Height = 31
+        Top = 186
+        Width = 170
         Caption = 'DATA'
         OnClick = Button25Click
         ParentFont = False
         TabOrder = 21
       end
       object Button26: TButton
-        Left = 896
-        Height = 25
-        Top = 177
-        Width = 136
+        Left = 1120
+        Height = 31
+        Top = 221
+        Width = 170
         Caption = 'HEADER'
         OnClick = Button26Click
         ParentFont = False
         TabOrder = 22
       end
       object Button27: TButton
-        Left = 441
-        Height = 25
-        Top = 11
-        Width = 166
+        Left = 551
+        Height = 31
+        Top = 14
+        Width = 208
         Caption = 'decode (BINARY-World)'
         OnClick = Button27Click
         ParentFont = False
         TabOrder = 23
+      end
+      object Button29: TButton
+        Left = 1324
+        Height = 31
+        Top = 765
+        Width = 94
+        Caption = 'START'
+        OnClick = Button29Click
+        TabOrder = 24
       end
     end
     object TabSheet1: TTabSheet
@@ -328,10 +338,10 @@ object Form1: TForm1
       OnContextPopup = TabSheet1ContextPopup
       ParentFont = False
       object Memo1: TMemo
-        Left = 16
-        Height = 451
-        Top = 176
-        Width = 1727
+        Left = 20
+        Height = 340
+        Top = 220
+        Width = 1721
         Anchors = [akTop, akLeft, akRight, akBottom]
         Lines.Strings = (
           '4803333032580770726976617465611d4d6f6e2c203231204f637420323031332032303a31333a323120474d546e1768747470733a2f2f7777772e6578616d706c652e636f6d'
@@ -355,38 +365,38 @@ object Form1: TForm1
         TabOrder = 0
       end
       object Label1: TLabel
-        Left = 16
+        Left = 20
         Height = 25
-        Top = 8
+        Top = 10
         Width = 240
         Caption = 'raw HEADER data (Hex Dump)'
         ParentColor = False
         ParentFont = False
       end
       object Label2: TLabel
-        Left = 16
+        Left = 20
         Height = 25
-        Top = 154
+        Top = 192
         Width = 115
         Caption = 'HTTP - Header'
         ParentColor = False
         ParentFont = False
       end
       object Edit2: TEdit
-        Left = 16
+        Left = 20
         Height = 33
-        Top = 626
-        Width = 1513
+        Top = 567
+        Width = 1453
         Anchors = [akLeft, akRight, akBottom]
         ParentFont = False
         TabOrder = 1
         Text = 'C:\Users\Andreas Filsinger\Documents\RAD Studio\Projekte\http2-tests\hpack-test-case\'
       end
       object Button2: TButton
-        Left = 16
-        Height = 25
-        Top = 670
-        Width = 220
+        Left = 20
+        Height = 31
+        Top = 614
+        Width = 275
         Anchors = [akLeft, akBottom]
         Caption = 'Run all "decode" Tests ...'
         OnClick = Button2Click
@@ -394,39 +404,39 @@ object Form1: TForm1
         TabOrder = 2
       end
       object Button14: TButton
-        Left = 94
-        Height = 25
-        Top = 528
-        Width = 107
+        Left = 118
+        Height = 31
+        Top = 660
+        Width = 134
         Caption = 'dump TABLE'
         OnClick = Button14Click
         ParentFont = False
         TabOrder = 3
       end
       object Button15: TButton
-        Left = 205
-        Height = 25
-        Top = 528
-        Width = 107
+        Left = 256
+        Height = 31
+        Top = 660
+        Width = 134
         Caption = 'new Game'
         OnClick = Button15Click
         ParentFont = False
         TabOrder = 4
       end
       object Edit5: TEdit
-        Left = 16
+        Left = 20
         Height = 33
-        Top = 678
-        Width = 888
+        Top = 848
+        Width = 1110
         ParentFont = False
         TabOrder = 5
         Text = 'C:\Users\Andreas\Documents\Embarcadero\Studio\Projekte\OrgaMon\HTTP2\huffman\RFC_7541_Appendix_B.huff'
       end
       object Memo4: TMemo
-        Left = 16
-        Height = 104
-        Top = 32
-        Width = 1280
+        Left = 20
+        Height = 130
+        Top = 40
+        Width = 1600
         Lines.Strings = (
           '20887689AA6355E580AE16D76F6196C361BE9403EA693F750400BCA01FB8D3D700DA98B46F5F92497CA589D34D1F6A1271D882A60E1BF0ACF7'
         )
@@ -436,10 +446,10 @@ object Form1: TForm1
         TabOrder = 6
       end
       object Button1: TButton
-        Left = 192
-        Height = 25
-        Top = 302
-        Width = 197
+        Left = 240
+        Height = 31
+        Top = 154
+        Width = 246
         Anchors = [akLeft, akBottom]
         Caption = 'decode (HPACK-World)'
         OnClick = Button1Click
@@ -447,20 +457,20 @@ object Form1: TForm1
         TabOrder = 7
       end
       object Button20: TButton
-        Left = 1221
-        Height = 25
+        Left = 1526
+        Height = 31
         Top = 0
-        Width = 75
+        Width = 94
         Caption = 'Clear'
         OnClick = Button20Click
         ParentFont = False
         TabOrder = 8
       end
       object Button21: TButton
-        Left = 1221
-        Height = 25
-        Top = 146
-        Width = 75
+        Left = 1526
+        Height = 31
+        Top = 182
+        Width = 94
         Caption = 'Clear'
         OnClick = Button21Click
         ParentFont = False
@@ -473,29 +483,29 @@ object Form1: TForm1
       ClientWidth = 1753
       ParentFont = False
       object Edit1: TEdit
-        Left = 53
+        Left = 66
         Height = 33
-        Top = 93
-        Width = 203
+        Top = 116
+        Width = 254
         ParentFont = False
         TabOrder = 0
         Text = 'nginx/1.15.5'
       end
       object Button28: TButton
-        Left = 264
-        Height = 25
-        Top = 91
-        Width = 173
+        Left = 330
+        Height = 31
+        Top = 114
+        Width = 216
         Caption = 'Huffman encode'
         OnClick = Button28Click
         ParentFont = False
         TabOrder = 1
       end
       object Memo5: TMemo
-        Left = 53
-        Height = 212
-        Top = 123
-        Width = 595
+        Left = 66
+        Height = 265
+        Top = 154
+        Width = 744
         Lines.Strings = (
           'Memo5'
         )
@@ -503,10 +513,10 @@ object Form1: TForm1
         TabOrder = 2
       end
       object Button16: TButton
-        Left = 55
-        Height = 25
-        Top = 35
-        Width = 342
+        Left = 69
+        Height = 31
+        Top = 44
+        Width = 428
         Caption = 'generate Pascal Table'
         OnClick = Button16Click
         ParentFont = False
