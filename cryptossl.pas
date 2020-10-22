@@ -714,32 +714,27 @@ begin
     if not (assigned(SSL_CTX_callback_ctrl)) then
       sDebug.add(LastError);
 
-    SSL_get_servername := TSSL_get_servername(GetProcAddress(libssl_HANDLE,
-      'SSL_get_servername'));
+    SSL_get_servername := TSSL_get_servername(GetProcAddress(libssl_HANDLE, 'SSL_get_servername'));
     if not (assigned(SSL_get_servername)) then
       sDebug.add(LastError);
 
     SSL_CTX_set_alpn_select_cb :=
-    TSSL_CTX_set_alpn_select_cb(GetProcAddress(libssl_HANDLE,
-      'SSL_CTX_set_alpn_select_cb'));
+    TSSL_CTX_set_alpn_select_cb(GetProcAddress(libssl_HANDLE,'SSL_CTX_set_alpn_select_cb'));
     if not (assigned(SSL_CTX_set_alpn_select_cb)) then
       sDebug.add(LastError);
 
     SSL_select_next_proto :=
-    TSSL_select_next_proto(GetProcAddress(libssl_HANDLE,
-      'SSL_select_next_proto'));
+    TSSL_select_next_proto(GetProcAddress(libssl_HANDLE, 'SSL_select_next_proto'));
     if not (assigned(SSL_select_next_proto)) then
       sDebug.add(LastError);
 
     SSL_pending :=
-    TSSL_pending(GetProcAddress(libssl_HANDLE,
-    'SSL_pending'));
+    TSSL_pending(GetProcAddress(libssl_HANDLE,'SSL_pending'));
     if not (assigned(SSL_pending)) then
       sDebug.add(LastError);
 
     SSL_has_pending :=
-    TSSL_pending(GetProcAddress(libssl_HANDLE,
-    'SSL_has_pending'));
+    TSSL_pending(GetProcAddress(libssl_HANDLE,'SSL_has_pending'));
     if not (assigned(SSL_has_pending)) then
       sDebug.add(LastError);
 

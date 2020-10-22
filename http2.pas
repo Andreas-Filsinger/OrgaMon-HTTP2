@@ -1410,7 +1410,7 @@ begin
 
    // Check Security
    CheckSecurityItem('Cipher','ECDHE-RSA-AES128-GCM-SHA256|ECDHE-RSA-AES256-GCM-SHA384');
-   CheckSecurityItem('Version','TLSv1.2');
+   CheckSecurityItem('Version','TLSv1.2|TLSv1.3');
    CheckSecurityItem('Kx','ECDH');
    CheckSecurityItem('Au','RSA');
    CheckSecurityItem('Enc','AESGCM(128)|AESGCM(256)');
