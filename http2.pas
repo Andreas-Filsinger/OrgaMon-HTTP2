@@ -671,7 +671,7 @@ var
 begin
  if (PathToTests<>'') then
  begin
-  AssignFile(F,PathToTests+'client-step-'+inttostr(ParseRounds)+'.http2');
+  AssignFile(F,PathToTests+'incoming-'+inttostr(ParseRounds)+'.http2');
   rewrite(F,1);
   blockwrite(F,ClientNoise,CN_Size);
   CloseFIle(F);
@@ -941,6 +941,7 @@ begin
                 inc(CN_Pos2,SizeOf_SETTINGS);
               end;
 
+              write(r_SETTINGS_ACK);
                // if Initialized then
               //write(SETTINGS_ACK);
               // else
@@ -1030,6 +1031,7 @@ begin
                  S := THTTP2_Stream.Create;
                  with S do
                   ID := cardinal(Stream_ID);
+
               end;
               mDebug.add(' Window_Size_Increment ' + IntToStr(Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment)) );
               inc (S.window_size,Cardinal(PFRAME_WINDOW_UPDATE(@ClientNoise[CN_Pos2])^.Window_Size_Increment) );
@@ -1498,8 +1500,13 @@ function THTTP2_Connection.write(W: RawByteString): cint;
 var
  WriteBuffer : TNoiseContainer;
 begin
- move(W[1],WriteBuffer,length(W));
- result := write(@WriteBuffer, length(W));
+  if (PathToTests<>'') then
+  begin
+   SaveRawBytes(W,PathToTests+'send-'+inttostr(ParseRounds)+'.http2');
+   inc(ParseRounds);
+  end;
+  move(W[1],WriteBuffer,length(W));
+  result := write(@WriteBuffer, length(W));
 end;
 
 procedure THTTP2_Connection.debug(D: RawByteString);

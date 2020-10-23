@@ -38,6 +38,8 @@ type
     Button28: TButton;
     Button29: TButton;
     Button3: TButton;
+    Button30: TButton;
+    Button31: TButton;
     Button4: TButton;
     Button5: TButton;
     Button6: TButton;
@@ -87,6 +89,8 @@ type
     procedure Button28Click(Sender: TObject);
     procedure Button29Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
+    procedure Button30Click(Sender: TObject);
+    procedure Button31Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
     procedure Button5Click(Sender: TObject);
@@ -333,7 +337,7 @@ procedure TForm1.Button13Click(Sender: TObject);
 var
  BytesWritten : cint;
 begin
- // thats NOT ok for a server
+ // thats NOT ok for a server to do this !
  BytesWritten := fHTTP2.write(@CLIENT_PREFIX[1],length(CLIENT_PREFIX));
  sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
 end;
@@ -555,6 +559,40 @@ begin
     end;
 
   end;
+end;
+
+procedure TForm1.Button30Click(Sender: TObject);
+var
+   C : RawByteString;
+   FName : string;
+begin
+
+  // send a page, but what ID
+  with fHTTP2 do
+  begin
+
+   with HEADERS_OUT do
+    begin
+     clear;
+     add(':status=200');
+     add('date='+HEADERS_OUT.Date);
+     add('server='+HEADERS_OUT.Server);
+     add('content-type=text/html; charset=UTF-8');
+     encode;
+    end;
+    C :=  r_Header(15)+r_DATA(15,NULL_PAGE);
+
+    FName := PathToTests + edit4.Text + '.http2';
+    fHTTP2.SaveRawBytes(C,FName);
+
+    write(C);
+  end;
+end;
+
+procedure TForm1.Button31Click(Sender: TObject);
+begin
+ memo3.lines.add('--------------------------------------------------------------');
+ memo3.lines.addstrings(fHTTP2.HEADERS_IN);
 end;
 
 procedure TForm1.Button3Click(Sender: TObject);
