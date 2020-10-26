@@ -197,6 +197,7 @@ type
   TSSL_has_pending = function(SSL: Pssl): cint; cdecl;
   TSSL_read = function(SSL: Pssl; buf : Pointer;  num: cint): cint; cdecl;
   TSSL_write = function(SSL: Pssl; buf : Pointer;  num: cint): cint; cdecl;
+  TSSL_sendfile = function(SSL: Pssl; fd: cint; offset: cint64; size: cuint64;flags: cint): cint32; cdecl;
 
 
 const
@@ -252,6 +253,8 @@ const
   SSL_has_pending: TSSL_has_pending = nil;
   SSL_read: TSSL_read = nil;
   SSL_write: TSSL_write = nil;
+  SSL_sendfile: TSSL_sendfile = nil;
+
 
 function Version: string;
 function LastError: string;
@@ -745,6 +748,11 @@ begin
    SSL_write:= TSSL_write(GetProcAddress(libssl_HANDLE,'SSL_write'));
    if not (assigned(SSL_write)) then
      sDebug.add(LastError);
+
+    SSL_sendfile :=  TSSL_sendfile(GetProcAddress(libssl_HANDLE,'SSL_sendfile'));
+//   if not (assigned(SSL_sendfile)) then
+  //   sDebug.add(LastError);
+
 
     (*
     if (CRYPTO_set_mem_functions(@CRYPTO_malloc, @CRYPTO_realloc, @CRYPTO_free) <> 1) then

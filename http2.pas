@@ -133,7 +133,8 @@ Type
 
      // Streams
      Streams: TList;
-     LAST_STREAM_ID : Integer;
+     LOCAL_STREAM_ID: Integer; // even, initiated by me
+     REMOTE_STREAM_ID: Integer; // odd, initiated by remote
 
      // openSSL
      CTX: PSSL_CTX;
@@ -172,10 +173,12 @@ Type
        function r_WINDOW_UPDATE (ID:integer=0; Size_Increment: Integer=$7fffff) : RawByteString;
        function r_HEADER (ID:Integer) : RawByteString;
        function r_DATA (ID:Integer; Content: RawByteString) : RawByteString;
+       function r_GOAWAY : RawByteString;
 
-       // write to the Connection
+       // lowlevel. really write to the Connection
        function write(buf : Pointer;  num: cint): cint; overload;
        function write(W : RawByteString): cint; overload;
+       procedure sendfile(FName:string);
 
        // Data
        procedure debug(D: RawByteString);
@@ -199,7 +202,7 @@ const
   // Debug-Messages for the media Layer
   mDebug: TStringList = nil;
   CLIENT_PREFIX: RawByteString = '';
-  PING_PAYLOAD: RawByteString = 'OrgaMon!';
+  PING_PAYLOAD: RawByteString = 'OrgaMon9';
   PathToTests: string = '';
 
 
@@ -262,10 +265,7 @@ type
 
 
 type
-   // RFC: "4.1.  Frame Format"
-
-   { THTTP2_FRAME }
-
+   // RFC: "4.1. Frame Format"
    THTTP2_FRAME = Packed record
      Len : TNum24Bit;     // 0..SETTINGS_MAX_FRAME_SIZE
      Typ : Byte;
@@ -276,7 +276,7 @@ type
    end;
    PHTTP2_FRAME_HEADER = ^THTTP2_FRAME;
 
-  // RFC: "6.2.  HEADERS"
+  // RFC: "6.2. HEADERS"
   // optional FRAME-Fragment: only if FLAG_PADDING is set
   TFRAME_HEADERS_PADDING = Packed record
     Pad_Length : byte;
@@ -290,20 +290,20 @@ type
   end;
   PFRAME_HEADERS_PRIORITY = ^TFRAME_HEADERS_PRIORITY;
 
-  // RFC: "6.3.  PRIORITY"
+  // RFC: "6.3. PRIORITY"
   TFRAME_PRIORITY = packed record
     Stream_Dependency : TNum32Bit;
     Weight : Byte;
   end;
   PFRAME_PRIORITY = ^TFRAME_PRIORITY;
 
-  // RFC: "6.4.  RST_STREAM"
+  // RFC: "6.4. RST_STREAM"
   TFRAME_RST_STREAM = packed record
    Error_Code : TNum32Bit;
   end;
   PFRAME_RST_STREAM = ^TFRAME_RST_STREAM;
 
-  // RFC: "6.5.1.  SETTINGS Format"
+  // RFC: "6.5.1. SETTINGS Format"
   TFRAME_SETTINGS = packed record
    SETTING_ID : TNum16Bit;
    Value      : TNum32Bit;
@@ -311,10 +311,11 @@ type
   end;
   PFRAME_SETTINGS = ^TFRAME_SETTINGS;
 
-  // RFC: "6.8.  GOAWAY"
+  // RFC: "6.8.GOAWAY"
   TFRAME_GOAWAY = packed record
     Last_Stream_ID : TNum31Bit;
     Error_Code : TNum32Bit;
+    function asString: RawByteString;
   end;
   PFRAME_GOAWAY = ^TFRAME_GOAWAY;
 
@@ -484,6 +485,14 @@ begin
  delete(result,1,1);
 end;
 
+{ TFRAME_GOAWAY }
+
+function TFRAME_GOAWAY.asString: RawByteString;
+begin
+ setLength(result,sizeof(TFRAME_GOAWAY));
+ move(Last_Stream_ID,result[1],sizeof(TFRAME_GOAWAY));
+end;
+
 { TFRAME_WINDOW_UPDATE }
 
 function TFRAME_WINDOW_UPDATE.asString: RawByteString;
@@ -628,6 +637,28 @@ begin
  result := FRAME.asString + Content;
 end;
 
+function THTTP2_Connection.r_GOAWAY: RawByteString;
+var
+ FRAME: THTTP2_FRAME;
+ FRAME_GOAWAY: TFRAME_GOAWAY;
+ Content : RawByteString;
+begin
+ Content := 'please connect again in a seconds';
+ with FRAME do
+ begin
+   Len := sizeof(TFRAME_GOAWAY)+length(Content);
+   Typ := FRAME_TYPE_GOAWAY;
+   Flags := 0;
+   Stream_ID := 0;
+ end;
+ with FRAME_GOAWAY do
+ begin
+   Last_Stream_ID := REMOTE_STREAM_ID;
+   Error_Code := NO_ERROR;
+ end;
+ result := FRAME.asString + FRAME_GOAWAY.asstring + Content;
+end;
+
 function THTTP2_Connection.r_PING(PayLoad:RawByteString; AsEcho: boolean = false):RawByteString;
 var
   Buf: array[0..pred(16*1024)] of byte;
@@ -648,7 +679,7 @@ begin
    Stream_ID := 0;
  end;
  PBuf := @Buf;
- SIZE:= SizeOf_FRAME;
+ SIZE := SizeOf_FRAME;
  move(FRAME,PBuf^,SizeOf_FRAME);
  inc(PBuf,SizeOf_FRAME);
 
@@ -772,7 +803,11 @@ begin
           if (Flags<>0) then
            mDebug.add(' Flags ['+FlagsAsString(Flags)+']');
 
+          // Stream - ID, Save the max value
           mDebug.add(' Stream '+IntToStr(Cardinal(Stream_ID)));
+          if (Cardinal(Stream_ID)>REMOTE_STREAM_ID) then
+            REMOTE_STREAM_ID := Cardinal(Stream_ID);
+
 
          inc(CN_Pos,SizeOf_FRAME);
          CN_Pos2 := CN_pos;
@@ -972,10 +1007,14 @@ begin
                break;
             end;
 
+            // copy Content
+            ContentSize := Cardinal(Len);
+            SetLength(D,ContentSize );
+            move(ClientNoise[CN_Pos2+n], D[1], ContentSize);
+
+            // echo only if ACK is not set
             if (Flags and FLAG_ACK=0) then
-            begin
-             // ok, We have to answer!
-            end;
+             write(r_PING(D,true));
 
           end;
           FRAME_TYPE_GOAWAY : begin
@@ -1022,7 +1061,7 @@ begin
              end;
 
             // Search for the Stream
-            if (cardinal(Stream_ID)<=LAST_STREAM_ID) then
+            if (cardinal(Stream_ID)<=REMOTE_STREAM_ID) then
             begin
              S := byID(cardinal(Stream_ID));
               if not(assigned(S)) then
@@ -1270,7 +1309,7 @@ begin
 
   // Streams
   Streams:= TList.create;
-  LAST_STREAM_ID := 2147483647;
+  REMOTE_STREAM_ID := 0;
 
   // Settings
   SETTINGS := THTTP2_Settings.create;
@@ -1424,56 +1463,6 @@ begin
    Reader.OnSSL_ERROR:=@Error;
    Reader.Start;
 
-   (*
-   sDebug.add('read ...');
-   BytesRead := SSL_read(SSL,@buf,sizeof(buf));
-
-   if (BytesRead<1) then
-   begin
-     ERROR := SSL_get_error(SSL,BytesRead);
-     sDebug.add(SSL_ERROR[ERROR]);
-
-
-     if ERROR=SSL_ERROR_SYSCALL then
-     begin
-      sDebug.add('WSAGetLastError='+IntTOstr(socketerror));
-      sDebug.add('GetLastError='+IntTOstr(GetLastError));
-      // SysErrorMessage()
-     end;
-     ERR_print_errors_cb(@cb_ERROR,nil);
-
-     raise Exception.create('SSL_read() fails');
-
-   end else
-   begin
-
-   sDebug.add('we have contact with '+IntTOStr(BytesRead)+' Bytes of Hello-Code!');
-
-    DD := '';
-    DC := '';
-    for n := 0 to pred(BytesRead) do
-    begin
-     DD := DD + ' ' + IntToHex(buf[n],2);
-     if (buf[n]>=ord(' ')) and (buf[n]<=ord('z')) then
-      DC := DC + chr(buf[n])
-     else
-      DC := DC + '.';
-     if (n MOD 16=15) then
-     begin
-      sDebug.add(DD+'  '+DC);
-      DD := '';
-      DC := '';
-     end;
-    end;
-    if (DD<>'') then
-     sDebug.add(DD+'  '+DC);
-
-    CN_SIze := BytesRead;
-    move(Buf, ClientNoise, CN_Size);
-    CN_Pos := 0;
-    Parse;
-   end;
-   *)
   end;
 end;
 
@@ -1507,6 +1496,29 @@ begin
   end;
   move(W[1],WriteBuffer,length(W));
   result := write(@WriteBuffer, length(W));
+end;
+
+procedure THTTP2_Connection.sendfile(FName: string);
+var
+ fd : THandle;
+ size : Int64;
+begin
+ size := FSize(FName);
+ if (size>0) then
+ begin
+  fd := FileOpen(FName,fmOpenRead);
+
+
+//  SSL_sendfile(SSL, fd, 0, size, 0);
+// ************************** sameold sameold
+
+ FileRead(fd,WriteBuffer,size);
+
+//**************************
+
+
+  FileClose(fd);
+ end;
 end;
 
 procedure THTTP2_Connection.debug(D: RawByteString);

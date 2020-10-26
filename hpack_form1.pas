@@ -302,16 +302,11 @@ begin
 end;
 
 procedure TForm1.Button11Click(Sender: TObject);
-var
-   buf : array[0..pred(16*1024)] of byte;
-   n : integer;
-   BytesWritten : cint;
 begin
-   for n := low(buf) to high(buf) do
-    buf[n] := random(256);
-
-   BytesWritten := fHTTP2.write(@buf,sizeof(buf));
-   sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
+  with fHTTP2 do
+  begin
+   write(r_GOAWAY);
+  end;
 end;
 
 procedure TForm1.Button12Click(Sender: TObject);
@@ -563,11 +558,11 @@ end;
 
 procedure TForm1.Button30Click(Sender: TObject);
 var
-   C : RawByteString;
-   FName : string;
+  C : RawByteString;
+  FName : string;
 begin
 
-  // send a page, but what ID
+  // send a page, but what ID?
   with fHTTP2 do
   begin
 
@@ -580,7 +575,7 @@ begin
      add('content-type=text/html; charset=UTF-8');
      encode;
     end;
-    C :=  r_Header(15)+r_DATA(15,NULL_PAGE);
+    C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
 
     FName := PathToTests + edit4.Text + '.http2';
     fHTTP2.SaveRawBytes(C,FName);
@@ -668,11 +663,11 @@ begin
    S := Strings[n];
 
    k := pos('>',S);
-   if k>0 then
+   if (k>0) then
     S := copy(S,succ(k),MaxInt);
 
    k := pos('<',S);
-   if k>0 then
+   if (k>0) then
     S := copy(S,succ(k),MaxInt);
 
    D += StrFilter(S,'0123456789ABCDEFabcdef');
@@ -808,4 +803,15 @@ begin
 end;
 
 end.
+
+// write rubbish
+var
+   buf : array[0..pred(16*1024)] of byte;
+   n : integer;
+   BytesWritten : cint;
+  for n := low(buf) to high(buf) do
+   buf[n] := random(256);
+
+  BytesWritten := fHTTP2.write(@buf,sizeof(buf));
+  sDebug.Add(IntTostr(BytesWritten)+' Bytes written ...');
 
