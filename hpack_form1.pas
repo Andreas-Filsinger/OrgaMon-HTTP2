@@ -563,24 +563,41 @@ var
 begin
 
   // send a page, but what ID?
-  with fHTTP2 do
-  begin
+  case REMOTE_STREAM_ID of
+   15:begin
+        with fHTTP2 do
+        begin
+         with HEADERS_OUT do
+         begin
+           clear;
+           add(':status=200');
+           add('date='+Date);
+           add('server='+Server);
+           add('content-type=text/html; charset=UTF-8');
+           encode;
+         end;
+         C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
+         write(C);
+        end;
+   end;
+  17:begin
 
-   with HEADERS_OUT do
+   with fHTTP2 do
+   begin
+    with HEADERS_OUT do
     begin
-     clear;
-     add(':status=200');
-     add('date='+HEADERS_OUT.Date);
-     add('server='+HEADERS_OUT.Server);
-     add('content-type=text/html; charset=UTF-8');
-     encode;
+      clear;
+      add(':status=200');
+      add('date='+Date);
+      add('server='+Server);
+      add('content-type=image/x-icon');
+      encode;
     end;
-    C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
+    write(r_Header(REMOTE_STREAM_ID));
+    sendfile();
+   end;
 
-    FName := PathToTests + edit4.Text + '.http2';
-    fHTTP2.SaveRawBytes(C,FName);
-
-    write(C);
+  end;
   end;
 end;
 

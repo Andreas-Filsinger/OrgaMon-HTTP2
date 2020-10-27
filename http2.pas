@@ -1346,29 +1346,17 @@ begin
  if (SSL_CTX_ctrl(CTX, SSL_CTRL_SET_MAX_PROTO_VERSION, TLS1_3_VERSION, nil) = 0) then
   raise Exception.Create('Set CTX Max Protokoll Version to 1.3 fails');
 
+ // Register a Callback for OpenSSL Infos
  SSL_CTX_set_info_callback(CTX,@cb_info);
+
+ // do this help?
  SSL_CTX_ctrl(CTX, SSL_CTRL_SET_ECDH_AUTO, 1, nil);
 
 // need SSL_CTX_set_tmp_{dh|rsa}
 // need SSL_CTX_set_cert_cb ?
 // need SSL_CTX_set_client_hello_cb ?
-// need
-{
-tcp_nodelay = 1;
-
-    if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-(const void *) &tcp_nodelay, sizeof(int))
- }
- // ?
- // SSL_CTX_set_read_ahead
-
- // not necessary, user defaults
-
- //if (SSL_CTX_set_cipher_list(CTX, 'TLS_AES_256_GCM_SHA384')<>1) then
-//  raise Exception.Create('set Cipher List fails');
-
-
-// SSL_CTX_set_options(CTX, SSL_OP_CIPHER_SERVER_PREFERENCE);
+// SSL_CTX_set_read_ahead?
+// SSL_CTX_set_options(CTX, SSL_OP_CIPHER_SERVER_PREFERENCE); ?
 
  // Register a Callback for: "SNI" read Identity Client expects
  SSL_CTX_callback_ctrl(CTX,SSL_CTRL_SET_TLSEXT_SERVERNAME_CB,@cb_SERVERNAME);
@@ -1502,22 +1490,24 @@ procedure THTTP2_Connection.sendfile(FName: string);
 var
  fd : THandle;
  size : Int64;
+ buffer: pointer;
 begin
  size := FSize(FName);
  if (size>0) then
  begin
-  fd := FileOpen(FName,fmOpenRead);
 
+  // OpenSSL 3.0.0
+  // SSL_sendfile(SSL, fd, 0, size, 0);
 
-//  SSL_sendfile(SSL, fd, 0, size, 0);
 // ************************** sameold sameold
-
- FileRead(fd,WriteBuffer,size);
-
+  buffer := GetMem(size);
+  fd := FileOpen(FName,fmOpenRead);
+  FileRead(fd,Buffer^,size);
+  write(Buffer, size);
+  FreeMem(buffer);
+  FileClose(fd);
 //**************************
 
-
-  FileClose(fd);
  end;
 end;
 
