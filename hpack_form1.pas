@@ -560,45 +560,42 @@ procedure TForm1.Button30Click(Sender: TObject);
 var
   C : RawByteString;
   FName : string;
+  REMOTE_STREAM_ID : Integer;
 begin
-
-  // send a page, but what ID?
-  case REMOTE_STREAM_ID of
-   15:begin
-        with fHTTP2 do
-        begin
-         with HEADERS_OUT do
-         begin
-           clear;
-           add(':status=200');
-           add('date='+Date);
-           add('server='+Server);
-           add('content-type=text/html; charset=UTF-8');
-           encode;
-         end;
-         C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
-         write(C);
-        end;
-   end;
-  17:begin
-
-   with fHTTP2 do
+       {
+  REMOTE_STREAM_ID := 15;
+  with fHTTP2 do
+  begin
+   with HEADERS_OUT do
    begin
-    with HEADERS_OUT do
-    begin
-      clear;
-      add(':status=200');
-      add('date='+Date);
-      add('server='+Server);
-      add('content-type=image/x-icon');
-      encode;
-    end;
-    write(r_Header(REMOTE_STREAM_ID));
-    sendfile();
+     clear;
+     add(':status=200');
+     add('date='+Date);
+     add('server='+Server);
+     add('content-type=text/html; charset=UTF-8');
+     encode;
    end;
+   C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
+   write(C);
+  end;
+        }
 
+  REMOTE_STREAM_ID := 15;
+  with fHTTP2 do
+  begin
+   with HEADERS_OUT do
+   begin
+     clear;
+     add(':status=200');
+     add('date='+Date);
+     add('server='+Server);
+     add('content-type=image/x-icon');
+     encode;
+   end;
+   write(r_Header(REMOTE_STREAM_ID));
+   sendfile('favicon.ico',REMOTE_STREAM_ID);
   end;
-  end;
+
 end;
 
 procedure TForm1.Button31Click(Sender: TObject);
@@ -632,6 +629,7 @@ begin
    fHTTP2.OnRequest := @Request;
    ShowDebugmessages;
    fHTTP2.CTX:= fHTTP2.StrictHTTP2Context;
+   fHTTP2.Path := Edit3.Text;
    ShowDebugmessages;
   end;
 end;

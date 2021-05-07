@@ -149,6 +149,7 @@ Type
        CN_Pos: Integer; // 0..pred(CN_Size)
        AutomataState : Byte;
        ParseRounds : Integer;
+       Path: String;
 
        //
        constructor Create;
@@ -178,7 +179,7 @@ Type
        // lowlevel. really write to the Connection
        function write(buf : Pointer;  num: cint): cint; overload;
        function write(W : RawByteString): cint; overload;
-       procedure sendfile(FName:string);
+       procedure sendfile(FName:string; ID:Integer);
 
        // Data
        procedure debug(D: RawByteString);
@@ -270,7 +271,7 @@ type
      Len : TNum24Bit;     // 0..SETTINGS_MAX_FRAME_SIZE
      Typ : Byte;
      Flags : Byte;
-     Stream_ID : TNum31Bit; // 0,2,4..2147483648  even-numbered on servers
+     Stream_ID : TNum31Bit; // 0,2,4..2147483648  even-numbered on server-side-created
 
      function asString : RawByteString;
    end;
@@ -1486,27 +1487,45 @@ begin
   result := write(@WriteBuffer, length(W));
 end;
 
-procedure THTTP2_Connection.sendfile(FName: string);
+procedure THTTP2_Connection.sendfile(FName: string; ID: Integer);
 var
  fd : THandle;
  size : Int64;
  buffer: pointer;
+ FRAME: THTTP2_FRAME;
+ RESOURCE: RawByteString;
+ ResourceFName: String;
 begin
- size := FSize(FName);
+ // imp pend: secure this!
+ ResourceFName := Path + cs_Servername + '\' + FName;
+
+ RESOURCE := '';
+ size := FSize(ResourceFName);
  if (size>0) then
  begin
-
+   with FRAME do
+   begin
+     Len := size;
+     Typ := FRAME_TYPE_DATA;
+     Flags := FLAG_END_STREAM;
+     Stream_ID := ID;
+   end;
+//   write(FRAME.AsString);
   // OpenSSL 3.0.0
   // SSL_sendfile(SSL, fd, 0, size, 0);
 
 // ************************** sameold sameold
   buffer := GetMem(size);
-  fd := FileOpen(FName,fmOpenRead);
+  fd := FileOpen(ResourceFName,fmOpenRead);
   FileRead(fd,Buffer^,size);
-  write(Buffer, size);
-  FreeMem(buffer);
   FileClose(fd);
+
+  setLength(RESOURCE,size);
+  move(Buffer^,RESOURCE[1],size);
+  FreeMem(buffer);
 //**************************
+
+  write(FRAME.AsString+RESOURCE);
 
  end;
 end;
