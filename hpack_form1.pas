@@ -122,7 +122,7 @@ type
     { public declarations }
     procedure InitPathToTest;
     procedure ShowDebugMessages;
-    procedure Request(s:String);
+    procedure Request(R:TStringList);
     procedure StartServer;
   end;
 
@@ -557,44 +557,7 @@ begin
 end;
 
 procedure TForm1.Button30Click(Sender: TObject);
-var
-  C : RawByteString;
-  FName : string;
-  REMOTE_STREAM_ID : Integer;
 begin
-       {
-  REMOTE_STREAM_ID := 15;
-  with fHTTP2 do
-  begin
-   with HEADERS_OUT do
-   begin
-     clear;
-     add(':status=200');
-     add('date='+Date);
-     add('server='+Server);
-     add('content-type=text/html; charset=UTF-8');
-     encode;
-   end;
-   C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
-   write(C);
-  end;
-        }
-
-  REMOTE_STREAM_ID := 15;
-  with fHTTP2 do
-  begin
-   with HEADERS_OUT do
-   begin
-     clear;
-     add(':status=200');
-     add('date='+Date);
-     add('server='+Server);
-     add('content-type=image/x-icon');
-     encode;
-   end;
-   write(r_Header(REMOTE_STREAM_ID));
-   sendfile('favicon.ico',REMOTE_STREAM_ID);
-  end;
 
 end;
 
@@ -797,11 +760,56 @@ begin
  end;
 end;
 
-procedure TForm1.Request(s: String);
+procedure TForm1.Request(R: TStringList);
+var
+  C : RawByteString;
+  FName : string;
+  REMOTE_STREAM_ID : Integer;
 begin
- if (s<>'') then
-  sDebug.add(s);
+
+ sDebug.addstrings(R);
  ShowDebugMessages;
+
+ REMOTE_STREAM_ID := StrToIntDef(R.Values['ID'],0);
+ repeat
+
+  if (R.Values[':path']='/') then
+  begin
+    with fHTTP2 do
+    begin
+    with HEADERS_OUT do
+    begin
+     clear;
+     add(':status=200');
+     add('date='+Date);
+      add('server='+Server);
+     add('content-type=text/html; charset=UTF-8');
+     encode;
+    end;
+    C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
+    write(C);
+    end;
+    break;
+  end;
+
+  // must be a file
+  with fHTTP2 do
+  begin
+    with HEADERS_OUT do
+    begin
+     clear;
+     add(':status=200');
+     add('date='+Date);
+     add('server='+Server);
+     add('content-type=image/x-icon');
+     encode;
+    end;
+    write(r_Header(REMOTE_STREAM_ID));
+    sendfile(R.Values[':path'],REMOTE_STREAM_ID);
+  end;
+
+ until true;
+ R.Free;
 end;
 
 procedure TForm1.StartServer;

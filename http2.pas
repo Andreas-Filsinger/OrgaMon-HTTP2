@@ -7,7 +7,7 @@
 |
 |    HTTP/2 (as described in RFC 7540)
 |
-|    (c) 2017 - 2020  Andreas Filsinger
+|    (c) 2017 - 2021  Andreas Filsinger
 |
 |    This program is free software: you can redistribute it and/or modify
 |    it under the terms of the GNU General Public License as published by
@@ -111,7 +111,7 @@ Type
 
  { THTTP2_Connection }
 
- TRequestMethod = procedure(s : String) of Object;
+ TRequestMethod = procedure(Request : TStringList) of Object;
 
  THTTP2_Connection = class(TObject)
 
@@ -197,15 +197,12 @@ Type
        class function NULL_PAGE : RawByteString;
  end;
 
-
-
 const
   // Debug-Messages for the media Layer
   mDebug: TStringList = nil;
   CLIENT_PREFIX: RawByteString = '';
   PING_PAYLOAD: RawByteString = 'OrgaMon9';
   PathToTests: string = '';
-
 
 function getSocket: cint;
 
@@ -754,6 +751,9 @@ var
   S : THTTP2_Stream;
   StreamFound : boolean;
 
+  // Request
+  R : TStringList;
+
 begin
  ParserSave;
  repeat
@@ -880,7 +880,15 @@ begin
              Wire := H;
              Decode;
             end;
-            mDebug.addStrings(HEADERS_IN.DebugStrings);
+
+            R := TStringList.create;
+            R.addStrings(HEADERS_IN);
+            R.add('ID='+IntTOstr(Cardinal(Stream_ID)));
+
+            mDebug.addStrings(R);
+
+            if assigned(FRequest) then
+             FRequest(R);
 
            end;
 
@@ -1575,8 +1583,6 @@ begin
  begin
   mDebug.add('Have '+IntToStr(length(D))+' Byte(s) of Incoming Data');
   enqueue(D);
-  if assigned(FRequest) then
-   FRequest('');
  end;
 end;
 
