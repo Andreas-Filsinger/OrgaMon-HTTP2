@@ -192,9 +192,11 @@ Type
        // Error Informations
        procedure loadERROR(Err : cint);
 
+       // Call-Back if there is a request from Client
        property OnRequest : TrequestMethod read FRequest write FRequest;
 
        class function NULL_PAGE : RawByteString;
+       class function ContentTypeof(ResourceName: String = ''):String;
  end;
 
 const
@@ -882,8 +884,8 @@ begin
             end;
 
             R := TStringList.create;
-            R.addStrings(HEADERS_IN);
-            R.add('ID='+IntTOstr(Cardinal(Stream_ID)));
+            R.AddStrings(HEADERS_IN);
+            R.add(CONTEXT_HEADER_STREAM_ID+'='+IntToStr(Cardinal(Stream_ID)));
 
             mDebug.addStrings(R);
 
@@ -1447,10 +1449,10 @@ begin
    sDebug.addstrings(SecurityPromise);
 
    // Check Security
-   CheckSecurityItem('Cipher','ECDHE-RSA-AES128-GCM-SHA256|ECDHE-RSA-AES256-GCM-SHA384');
+   CheckSecurityItem('Cipher','ECDHE-RSA-AES128-GCM-SHA256|ECDHE-RSA-AES256-GCM-SHA384|TLS_AES_128_GCM_SHA256');
    CheckSecurityItem('Version','TLSv1.2|TLSv1.3');
-   CheckSecurityItem('Kx','ECDH');
-   CheckSecurityItem('Au','RSA');
+   CheckSecurityItem('Kx','ECDH|any');
+   CheckSecurityItem('Au','RSA|any');
    CheckSecurityItem('Enc','AESGCM(128)|AESGCM(256)');
    CheckSecurityItem('Mac','AEAD');
 
@@ -1603,6 +1605,41 @@ end;
 class function THTTP2_Connection.NULL_PAGE: RawByteString;
 begin
   result := EMPTY_PAGE;
+end;
+
+class function THTTP2_Connection.ContentTypeof(ResourceName: String = '') : String;
+var
+ DotPos: Integer;
+begin
+  repeat
+    DotPos:= RevPos('.',ResourceName);
+    if (DotPos=0) then
+    begin
+      result := 'text/html; charset=UTF-8';
+      break;
+    end;
+    case ResourceName[succ(DotPos)] of
+     'c'{ss}: result := 'text/css';
+     'h'{tml}: result := 'text/html';
+     'a'{pk}: result := 'application/vnd.android.package-archive';
+     'j': case ResourceName[DotPos+2] of
+           {j}'s': result := 'application/javascript; charset=UTF-8';
+           {j}'p'{g}: result := 'image/jpeg';
+          else
+            result := 'none';
+          end;
+     'i'{co}: result := 'image/x-icon';
+     'p': case ResourceName[DotPos+2] of
+           {p}'n'{g}: result := 'image/png';
+           {p}'d'{f}: result := 'application/pdf';
+          else
+            result := 'none';
+          end;
+     's'{vg}: result := 'image/svg+xml';
+    else
+      result := 'none';
+    end;
+  until yet;
 end;
 
 // Im Rang 1: socket von systemd erhalten: // http://0pointer.de/blog/projects/socket-activation.html

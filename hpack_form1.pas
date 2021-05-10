@@ -38,7 +38,6 @@ type
     Button28: TButton;
     Button29: TButton;
     Button3: TButton;
-    Button30: TButton;
     Button31: TButton;
     Button4: TButton;
     Button5: TButton;
@@ -763,36 +762,39 @@ end;
 procedure TForm1.Request(R: TStringList);
 var
   C : RawByteString;
-  FName : string;
-  REMOTE_STREAM_ID : Integer;
+  RequestedResourceName : string;
+  ID : Integer;
 begin
+ memo2.Lines.add('{ ----------');
+ memo2.Lines.AddStrings(R);
+ memo2.Lines.add('---------- }');
 
- sDebug.addstrings(R);
- ShowDebugMessages;
+ RequestedResourceName := R.Values[':path'];
+ ID := StrToIntDef(R.Values[CONTEXT_HEADER_STREAM_ID],0);
 
- REMOTE_STREAM_ID := StrToIntDef(R.Values['ID'],0);
+ memo2.lines.add('Answering to '+RequestedResourceName+'@'+IntTOStr(ID)+ '...');
  repeat
 
-  if (R.Values[':path']='/') then
+  if (RequestedResourceName='/') then
   begin
     with fHTTP2 do
     begin
-    with HEADERS_OUT do
-    begin
-     clear;
-     add(':status=200');
-     add('date='+Date);
-      add('server='+Server);
-     add('content-type=text/html; charset=UTF-8');
-     encode;
-    end;
-    C :=  r_Header(REMOTE_STREAM_ID)+r_DATA(REMOTE_STREAM_ID,NULL_PAGE);
-    write(C);
+      with HEADERS_OUT do
+      begin
+        clear;
+        add(':status=200');
+        add('date='+Date);
+        add('server='+Server);
+        add('content-type='+ContentTypeOf(RequestedResourceName));
+        encode;
+      end;
+      C := r_Header(ID)+r_DATA(ID,NULL_PAGE);
+      write(C);
     end;
     break;
   end;
 
-  // must be a file
+  // deliver a file
   with fHTTP2 do
   begin
     with HEADERS_OUT do
@@ -801,14 +803,14 @@ begin
      add(':status=200');
      add('date='+Date);
      add('server='+Server);
-     add('content-type=image/x-icon');
+     add('content-type='+ContentTypeOf(RequestedResourceName));
      encode;
     end;
-    write(r_Header(REMOTE_STREAM_ID));
-    sendfile(R.Values[':path'],REMOTE_STREAM_ID);
+    write(r_Header(ID));
+    sendfile(RequestedResourceName,ID);
   end;
 
- until true;
+ until yet;
  R.Free;
 end;
 

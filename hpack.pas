@@ -42,6 +42,8 @@ uses
 const
  DEFAULT_MAXIMUM_TABLE_SIZE = 4096;
 
+ CONTEXT_HEADER_STREAM_ID = '%sid'; // carry the http2 Stream ID inside Request Header '%sid=17'
+
 type
 
  { THPACK }
@@ -220,6 +222,7 @@ const
 
  DYN_TABLE_FIRST_ELEMENT = 62;
  DYN_TABLE_ELEMENT_ADD_SIZE = 32;
+
 
  SingleBitMask : array[0..7] of Byte = (
    { 0 } %10000000,
@@ -554,7 +557,7 @@ end;
 
 constructor THPACK.Create(Size : int64 = 4096);
 var
- n,k : integer;
+ n : integer;
 begin
   MAXIMUM_TABLE_SIZE := Size;
   DYNAMIC_TABLE_SIZE := Size;
@@ -2194,11 +2197,11 @@ var
  NameValuePair : String;
  TABLE_INDEX : Integer;
  H_Name, H_Value : boolean;
- Binary_Representation_Protected : boolean;
 begin
  BytePos := 0;
  BytePosLast := pred(length(iWire));
  BitPos := 0;
+ Clear;
  while true do
  begin
 
@@ -2294,7 +2297,6 @@ begin
      end else
      begin
       // "000 ..."
-      Binary_Representation_Protected := B;
 
       // "0000"
       // RFC "6.2.2.  Literal Header Field without Indexing"
